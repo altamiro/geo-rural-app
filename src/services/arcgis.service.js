@@ -2,8 +2,8 @@
  * Serviço para funções específicas do ArcGIS Maps SDK
  * Centraliza o carregamento de módulos e funções comuns
  */
-import { loadModules } from 'esri-loader'
-import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from '@/utils/constants'
+import { loadEsriModules } from "@/utils/esri-loader-config";
+import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
 
 class ArcGISService {
   /**
@@ -13,54 +13,54 @@ class ArcGISService {
    */
   async initializeMap(containerId) {
     try {
-      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadModules([
+      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadEsriModules([
         "esri/Map",
         "esri/views/MapView",
         "esri/layers/GraphicsLayer",
         "esri/widgets/BasemapGallery",
-        "esri/widgets/Expand"
-      ])
+        "esri/widgets/Expand",
+      ]);
 
       // Criar camada de gráficos
-      const graphicsLayer = new GraphicsLayer()
+      const graphicsLayer = new GraphicsLayer();
 
       // Criar mapa
       const map = new Map({
         basemap: "satellite",
-        layers: [graphicsLayer]
-      })
+        layers: [graphicsLayer],
+      });
 
       // Criar view do mapa
       const view = new MapView({
         container: containerId,
         map: map,
         center: INITIAL_MAP_CENTER,
-        zoom: INITIAL_MAP_ZOOM
-      })
+        zoom: INITIAL_MAP_ZOOM,
+      });
 
       // Adicionar galeria de mapas base
       const basemapGallery = new BasemapGallery({
-        view: view
-      })
+        view: view,
+      });
 
       // Colocar galeria em um widget de expansão
       const bgExpand = new Expand({
         view: view,
         content: basemapGallery,
-        expandIconClass: "esri-icon-basemap"
-      })
+        expandIconClass: "esri-icon-basemap",
+      });
 
-      view.ui.add(bgExpand, "top-right")
+      view.ui.add(bgExpand, "top-right");
 
       return {
         map,
         view,
         graphicsLayer,
-        basemapGallery
-      }
+        basemapGallery,
+      };
     } catch (error) {
-      console.error("Erro ao inicializar mapa:", error)
-      throw error
+      console.error("Erro ao inicializar mapa:", error);
+      throw error;
     }
   }
 
@@ -72,26 +72,61 @@ class ArcGISService {
    */
   async initializeSketchViewModel(view, layer) {
     try {
-      const [SketchViewModel] = await loadModules([
-        "esri/widgets/Sketch/SketchViewModel"
-      ])
-
-      if (!view || !layer) {
-        throw new Error("View ou layer não definidos para SketchViewModel")
+      if (!view) {
+        throw new Error("View não definida para SketchViewModel");
       }
 
+      if (!layer) {
+        throw new Error("Layer não definida para SketchViewModel");
+      }
+
+      // Verificar se a view foi inicializada completamente
+      if (!view.ready) {
+        console.log("View ainda não está pronta. Aguardando...");
+        await view.when();
+      }
+
+      // Verificar se o módulo já foi carregado para evitar carregamentos duplicados
+      const [SketchViewModel] = await loadEsriModules(["esri/widgets/Sketch/SketchViewModel"]);
+
+      // Criar o SketchViewModel com opções mais completas
       const sketchViewModel = new SketchViewModel({
         view: view,
         layer: layer,
         defaultCreateOptions: {
-          mode: "freehand"
-        }
-      })
+          mode: "freehand",
+        },
+        defaultUpdateOptions: {
+          // Opções de atualização
+          enableRotation: true,
+          enableScaling: true,
+          enableZ: false,
+          multipleSelectionEnabled: false,
+        },
+        snappingOptions: {
+          // Ativar snapping para maior precisão
+          enabled: true,
+          featureEnabled: true,
+          selfEnabled: true,
+        },
+      });
 
-      return sketchViewModel
+      // Validar que o SketchViewModel foi criado corretamente
+      if (!sketchViewModel) {
+        throw new Error("Falha ao criar SketchViewModel");
+      }
+
+      // Adicionar manipulador para erros durante o uso
+      sketchViewModel.on("create-error", (error) => {
+        console.error("Erro durante a criação do SketchViewModel:", error);
+      });
+
+      // Retornar o SketchViewModel inicializado
+      console.log("SketchViewModel inicializado com sucesso");
+      return sketchViewModel;
     } catch (error) {
-      console.error("Erro ao inicializar SketchViewModel:", error)
-      throw error
+      console.error("Erro ao inicializar SketchViewModel:", error);
+      throw error;
     }
   }
 
@@ -105,19 +140,19 @@ class ArcGISService {
   async createGraphic(geometry, symbol, attributes = {}) {
     try {
       if (!geometry) {
-        throw new Error("Geometria não definida para createGraphic")
+        throw new Error("Geometria não definida para createGraphic");
       }
 
-      const [Graphic] = await loadModules(["esri/Graphic"])
+      const [Graphic] = await loadEsriModules(["esri/Graphic"]);
 
       return new Graphic({
         geometry,
         symbol,
-        attributes
-      })
+        attributes,
+      });
     } catch (error) {
-      console.error("Erro ao criar gráfico:", error)
-      throw error
+      console.error("Erro ao criar gráfico:", error);
+      throw error;
     }
   }
 
@@ -130,59 +165,59 @@ class ArcGISService {
   async createSymbol(type, color) {
     try {
       if (!type) {
-        throw new Error("Tipo de símbolo não definido")
+        throw new Error("Tipo de símbolo não definido");
       }
 
       if (!color || !Array.isArray(color) || color.length !== 4) {
         // Fallback para cor padrão se não receber uma cor válida
-        color = [128, 128, 128, 0.5]
+        color = [128, 128, 128, 0.5];
       }
 
-      let symbolModule
-      let symbolOptions = {}
+      let symbolModule;
+      let symbolOptions = {};
 
       switch (type) {
-        case 'point':
-          symbolModule = "esri/symbols/SimpleMarkerSymbol"
+        case "point":
+          symbolModule = "esri/symbols/SimpleMarkerSymbol";
           symbolOptions = {
             style: "circle",
             color: color,
             size: "8px",
             outline: {
               color: [color[0], color[1], color[2], 1],
-              width: 1
-            }
-          }
-          break
+              width: 1,
+            },
+          };
+          break;
 
-        case 'polyline':
-          symbolModule = "esri/symbols/SimpleLineSymbol"
+        case "polyline":
+          symbolModule = "esri/symbols/SimpleLineSymbol";
           symbolOptions = {
             color: color,
-            width: 2
-          }
-          break
+            width: 2,
+          };
+          break;
 
-        case 'polygon':
-          symbolModule = "esri/symbols/SimpleFillSymbol"
+        case "polygon":
+          symbolModule = "esri/symbols/SimpleFillSymbol";
           symbolOptions = {
             color: color,
             outline: {
               color: [color[0], color[1], color[2], 1],
-              width: 1
-            }
-          }
-          break
+              width: 1,
+            },
+          };
+          break;
 
         default:
-          throw new Error(`Tipo de símbolo não suportado: ${type}`)
+          throw new Error(`Tipo de símbolo não suportado: ${type}`);
       }
 
-      const [Symbol] = await loadModules([symbolModule])
-      return new Symbol(symbolOptions)
+      const [Symbol] = await loadEsriModules([symbolModule]);
+      return new Symbol(symbolOptions);
     } catch (error) {
-      console.error(`Erro ao criar símbolo ${type}:`, error)
-      throw error
+      console.error(`Erro ao criar símbolo ${type}:`, error);
+      throw error;
     }
   }
 
@@ -195,14 +230,14 @@ class ArcGISService {
   async isPointInPolygon(point, polygon) {
     try {
       if (!point || !polygon) {
-        throw new Error("Ponto ou polígono não definidos")
+        throw new Error("Ponto ou polígono não definidos");
       }
 
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
-      return geometryEngine.contains(polygon, point)
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
+      return geometryEngine.contains(polygon, point);
     } catch (error) {
-      console.error("Erro ao verificar ponto no polígono:", error)
-      return false
+      console.error("Erro ao verificar ponto no polígono:", error);
+      return false;
     }
   }
 
@@ -214,30 +249,30 @@ class ArcGISService {
   async searchLocation(searchText) {
     try {
       if (!searchText) {
-        return []
+        return [];
       }
 
-      const [Locator] = await loadModules(["esri/tasks/Locator"])
+      const [Locator] = await loadEsriModules(["esri/tasks/Locator"]);
 
       const locator = new Locator({
-        url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
-      })
+        url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+      });
 
       const params = {
         address: {
-          SingleLine: searchText
+          SingleLine: searchText,
         },
         outFields: ["*"],
-        maxLocations: 5
-      }
+        maxLocations: 5,
+      };
 
-      const results = await locator.addressToLocations(params)
-      return results
+      const results = await locator.addressToLocations(params);
+      return results;
     } catch (error) {
-      console.error("Erro ao buscar localização:", error)
-      return []
+      console.error("Erro ao buscar localização:", error);
+      return [];
     }
   }
 }
 
-export default new ArcGISService()
+export default new ArcGISService();

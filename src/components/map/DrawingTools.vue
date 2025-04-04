@@ -79,11 +79,13 @@ export default {
         return
       }
 
-      // Define a ferramenta ativa e configura o SketchViewModel
+      // Define a ferramenta ativa
       this.activeTool = tool
 
+      // Verificação robusta do SketchViewModel
       if (!this.sketchViewModel) {
         console.error("Sketch view model não inicializado")
+        this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.")
         return
       }
 
@@ -91,45 +93,51 @@ export default {
       this.$emit('draw', { tool, layerId: this.selectedLayer })
 
       // Definir modo de criação para cada ferramenta
-      switch (tool) {
-        case 'polygon':
-          this.sketchViewModel.create('polygon', { mode: 'freehand' })
-          break
+      try {
+        switch (tool) {
+          case 'polygon':
+            this.sketchViewModel.create('polygon', { mode: 'freehand' })
+            break
 
-        case 'rectangle':
-          this.sketchViewModel.create('rectangle')
-          break
+          case 'rectangle':
+            this.sketchViewModel.create('rectangle')
+            break
 
-        case 'circle':
-          this.sketchViewModel.create('circle')
-          break
+          case 'circle':
+            this.sketchViewModel.create('circle')
+            break
 
-        case 'point':
-          // Só permite ponto para a sede do imóvel
-          if (this.selectedLayer !== 'headquarters') {
-            this.$message.warning('A ferramenta de ponto só pode ser usada para a sede do imóvel.')
-            this.activeTool = null
-            return
-          }
-          this.sketchViewModel.create('point')
-          break
+          case 'point':
+            // Só permite ponto para a sede do imóvel
+            if (this.selectedLayer !== 'headquarters') {
+              this.$message.warning('A ferramenta de ponto só pode ser usada para a sede do imóvel.')
+              this.activeTool = null
+              return
+            }
+            this.sketchViewModel.create('point')
+            break
 
-        case 'edit':
-          this.sketchViewModel.update()
-          break
+          case 'edit':
+            this.sketchViewModel.update()
+            break
 
-        case 'delete':
-          this.$confirm('Tem certeza que deseja excluir esta camada?', 'Confirmação', {
-            confirmButtonText: 'Sim',
-            cancelButtonText: 'Não',
-            type: 'warning'
-          }).then(() => {
-            this.deleteLayer(this.selectedLayer)
-            this.activeTool = null
-          }).catch(() => {
-            this.activeTool = null
-          })
-          break
+          case 'delete':
+            this.$confirm('Tem certeza que deseja excluir esta camada?', 'Confirmação', {
+              confirmButtonText: 'Sim',
+              cancelButtonText: 'Não',
+              type: 'warning'
+            }).then(() => {
+              this.deleteLayer(this.selectedLayer)
+              this.activeTool = null
+            }).catch(() => {
+              this.activeTool = null
+            })
+            break
+        }
+      } catch (error) {
+        console.error("Erro ao ativar ferramenta de desenho:", error)
+        this.$message.error(`Erro ao ativar a ferramenta: ${error.message}`)
+        this.activeTool = null
       }
     },
 

@@ -1,7 +1,7 @@
 /**
  * Serviço para cálculos de áreas e análises espaciais
  */
-import { loadModules } from 'esri-loader'
+import { loadEsriModules } from "@/utils/esri-loader-config";
 import { squareMetersToHectares } from '@/utils/geometry'
 import { GEOMETRY_TOLERANCE } from '@/utils/constants'
 
@@ -18,7 +18,7 @@ class CalculationService {
         return 0
       }
 
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
 
       // Calcular área em metros quadrados
       const areaInSqMeters = geometryEngine.geodesicArea(geometry, "square-meters")
@@ -73,7 +73,7 @@ class CalculationService {
         }
       }
 
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
 
       // Calcular interseção
       const intersectGeometry = geometryEngine.intersect(geometry1, geometry2, GEOMETRY_TOLERANCE)
@@ -124,7 +124,7 @@ class CalculationService {
 
       // Se não tem geometrias de cobertura, retorna 0%
       if (!coverageGeometries || !Array.isArray(coverageGeometries) || coverageGeometries.length === 0) {
-        const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+        const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
         const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters")
         const baseArea = squareMetersToHectares(baseAreaInSqMeters)
 
@@ -136,7 +136,7 @@ class CalculationService {
         }
       }
 
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
 
       // União de todas as geometrias de cobertura
       let unionGeometry = null
@@ -215,7 +215,7 @@ class CalculationService {
     try {
       if (!geometry1 || !geometry2) return false
 
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
       return geometryEngine.overlaps(geometry1, geometry2) ||
              geometryEngine.contains(geometry1, geometry2) ||
              geometryEngine.contains(geometry2, geometry1)

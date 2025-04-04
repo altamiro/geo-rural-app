@@ -58,6 +58,8 @@
         @property-drawn="onPropertyDrawn"
         @toggle-layer-panel="toggleSidebar('layers')"
         @show-search="toggleSidebar('search')"
+        @map-initialized="onMapInitialized"
+        @sketch-view-model-ready="onSketchViewModelReady"
       )
 
       // Ferramentas de desenho
@@ -155,7 +157,7 @@ import LayerList from '@/components/sidebar/LayerList.vue'
 import LayerDetails from '@/components/sidebar/LayerDetails.vue'
 import ValidationPanel from '@/components/sidebar/ValidationPanel.vue'
 import { mapState, mapGetters, mapActions } from 'vuex'
-import { loadModules } from 'esri-loader'
+import { loadEsriModules } from "@/utils/esri-loader-config";
 import { LAYER_TYPES } from '@/utils/constants'
 
 export default {
@@ -186,6 +188,8 @@ export default {
       currentSidebarView: 'layers', // 'layers', 'layerDetails', 'validation', 'search'
       selectedLayerId: null,
       layerValidation: null,
+      mapInitialized: false,
+      sketchViewModelReady: false,
 
       // Busca
       searchQuery: '',
@@ -247,7 +251,9 @@ export default {
     // Detalhes da camada selecionada
     selectedLayerDetails() {
       return this.getLayerById(this.selectedLayerId)
-    }
+    },
+
+
   },
   methods: {
     ...mapActions({
@@ -257,6 +263,22 @@ export default {
       toggleLayerVisibility: 'layers/toggleLayerVisibility',
       deleteLayerAction: 'layers/deleteLayer'
     }),
+
+    // Quando o mapa é inicializado
+    onMapInitialized() {
+      this.mapInitialized = true
+      console.log('Mapa inicializado com sucesso')
+
+      // Informar ao usuário
+      this.$message.success('Mapa carregado com sucesso', { duration: 1500 })
+    },
+
+    // Quando o SketchViewModel está pronto
+    onSketchViewModelReady() {
+      this.sketchViewModelReady = true
+      console.log('SketchViewModel inicializado e pronto para uso')
+    },
+
     // Quando a propriedade é desenhada
     onPropertyDrawn() {
       this.propertyDrawn = true
@@ -401,6 +423,11 @@ export default {
 
     // Métodos de gerenciamento de camadas
     handleDraw() {
+      if (!this.mapInitialized || !this.sketchViewModelReady) {
+        this.$message.warning('As ferramentas de desenho estão sendo inicializadas. Por favor, aguarde um momento.')
+        return
+      }
+
       if (this.selectedLayer) {
         // Lógica para iniciar o desenho
         this.$refs.mapContainer.startDrawing(this.selectedLayer)
@@ -505,7 +532,7 @@ export default {
         })
 
         // Usar o serviço ArcGIS para geocodificação
-        const [Locator] = await loadModules(["esri/tasks/Locator"])
+        const [Locator] = await loadEsriModules(["esri/tasks/Locator"])
 
         const locator = new Locator({
           url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"

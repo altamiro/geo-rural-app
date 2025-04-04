@@ -1,5 +1,5 @@
 import ValidationService from '@/services/validation.service'
-import { loadModules } from 'esri-loader'
+import { loadEsriModules } from "@/utils/esri-loader-config";
 import { LAYER_TYPES, LAYER_CATEGORIES, LAYER_SYMBOLOGY, MESSAGES } from '@/utils/constants'
 import { squareMetersToHectares } from '@/utils/geometry'
 
@@ -141,7 +141,7 @@ const actions = {
       }
 
       // Calculate area in hectares
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
       const areaInSqMeters = geometryEngine.geodesicArea(finalGeometry, "square-meters")
       const area = squareMetersToHectares(areaInSqMeters)
 
@@ -202,7 +202,7 @@ const actions = {
       }
 
       // Calculate new area
-      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
       const areaInSqMeters = geometryEngine.geodesicArea(geometry, "square-meters")
       const area = squareMetersToHectares(areaInSqMeters)
 

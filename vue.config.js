@@ -11,6 +11,20 @@ module.exports = defineConfig({
       }
     }
   },
+  configureWebpack: {
+    performance: {
+      hints: false, // Desativar avisos de performance
+      maxEntrypointSize: 1024000, // Aumentar tamanho limite para entrypoints
+      maxAssetSize: 1024000 // Aumentar tamanho limite para assets
+    },
+    optimization: {
+      splitChunks: {
+        chunks: 'all', // Melhorar divisão de chunks
+        minSize: 20000,
+        maxSize: 250000
+      }
+    }
+  },
   chainWebpack: config => {
     // Add pug loader
     config.module
