@@ -155,6 +155,7 @@ import LayerList from '@/components/sidebar/LayerList.vue'
 import LayerDetails from '@/components/sidebar/LayerDetails.vue'
 import ValidationPanel from '@/components/sidebar/ValidationPanel.vue'
 import { mapState, mapGetters, mapActions, mapMutations } from 'vuex'
+import { loadModules } from 'esri-loader'
 import { LAYER_TYPES } from '@/utils/constants'
 
 export default {
@@ -401,7 +402,11 @@ export default {
 
     // Métodos de gerenciamento de camadas
     startDrawing() {
-      // Implementado no DrawingTools
+      if (this.selectedLayer) {
+        this.$emit('start-drawing', this.selectedLayer)
+      } else {
+        this.$message.warning('Selecione uma camada antes de iniciar o desenho.')
+      }
     },
 
     editLayer(layerData) {
@@ -483,16 +488,42 @@ export default {
     },
 
     // Busca (implementação futura)
-    performSearch() {
+    async performSearch() {
       if (!this.searchQuery) return
 
-      this.$message.info(`Buscando: ${this.searchQuery}`)
+      try {
+        // Usar o serviço ArcGIS para geocodificação
+        const [Locator] = await loadModules(["esri/tasks/Locator"])
 
-      // Aqui seria implementada a lógica de geocodificação
-      // usando a API ArcGIS
+        const locator = new Locator("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer")
+
+        const params = {
+          address: {
+            SingleLine: this.searchQuery
+          }
+        }
+
+        const results = await locator.addressToLocations(params)
+
+        if (results.length > 0) {
+          const firstResult = results[0]
+
+          // Zoom para o local encontrado
+          this.$refs.mapContainer.view.goTo({
+            target: firstResult.location,
+            zoom: 14
+          })
+
+          this.$message.success(`Localização encontrada: ${firstResult.address}`)
+        } else {
+          this.$message.warning('Nenhum resultado encontrado.')
+        }
+      } catch (error) {
+        console.error('Erro na busca:', error)
+        this.$message.error('Não foi possível realizar a busca.')
+      }
     }
   }
-}
 </script>
 
 <style lang="scss" scoped>

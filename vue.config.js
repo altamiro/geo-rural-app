@@ -1,5 +1,3 @@
-const { defineConfig } = require('@vue/cli-service')
-
 module.exports = defineConfig({
   transpileDependencies: true,
   css: {
@@ -19,5 +17,16 @@ module.exports = defineConfig({
       .use('pug-plain-loader')
       .loader('pug-plain-loader')
       .end()
+
+    // Add image loader
+    config.module
+      .rule('images')
+      .test(/\.(png|jpe?g|gif|svg)(\?.*)?$/)
+      .use('url-loader')
+      .loader('url-loader')
+      .options({
+        limit: 10000,
+        name: 'img/[name].[hash:8].[ext]'
+      })
   }
 })

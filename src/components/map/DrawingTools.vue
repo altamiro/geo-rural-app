@@ -67,26 +67,27 @@ export default {
       'deleteLayer'
     ]),
     activateTool(tool) {
-      // Check if a layer is selected
+      // Valida se uma camada está selecionada
       if (!this.isLayerSelected) {
         this.$message.warning('Selecione uma camada antes de usar as ferramentas de desenho.')
         return
       }
 
-      // For non-property layers, check if property is drawn
+      // Verifica se a propriedade está desenhada antes de adicionar outras camadas
       if (this.selectedLayer !== 'property' && !this.isPropertyDrawn) {
         this.$message.warning('Você deve desenhar a área do imóvel primeiro.')
         return
       }
 
-      // Set active tool and configure sketch view model
+      // Define a ferramenta ativa e configura o SketchViewModel
       this.activeTool = tool
 
       if (!this.sketchViewModel) {
-        console.error("Sketch view model not initialized")
+        console.error("Sketch view model não inicializado")
         return
       }
 
+      // Definir modo de criação para cada ferramenta
       switch (tool) {
         case 'polygon':
           this.sketchViewModel.create('polygon', { mode: 'freehand' })
@@ -101,7 +102,7 @@ export default {
           break
 
         case 'point':
-          // Only allow point for headquarters
+          // Só permite ponto para a sede do imóvel
           if (this.selectedLayer !== 'headquarters') {
             this.$message.warning('A ferramenta de ponto só pode ser usada para a sede do imóvel.')
             this.activeTool = null
@@ -111,11 +112,10 @@ export default {
           break
 
         case 'edit':
-          this.sketchViewModel.update(this.sketchViewModel.updateGraphics)
+          this.sketchViewModel.update()
           break
 
         case 'delete':
-          // Show confirmation dialog
           this.$confirm('Tem certeza que deseja excluir esta camada?', 'Confirmação', {
             confirmButtonText: 'Sim',
             cancelButtonText: 'Não',
@@ -144,15 +144,98 @@ export default {
 
     zoomToExtent() {
       if (this.view && this.sketchViewModel && this.sketchViewModel.layer) {
-        // Zoom to the extent of all graphics
+        // Zoom para a extensão de todos os gráficos
         this.view.goTo(this.sketchViewModel.layer.graphics)
       }
     },
 
     panMode() {
       if (this.sketchViewModel) {
-        // Deactivate any drawing tools and enable pan mode
+        // Cancelar qualquer ferramenta de desenho ativa
         this.sketchViewModel.cancel()
         this.activeTool = null
+
+        // Se a view existir, ativar o modo de pan
+        if (this.view) {
+          this.view.container.style.cursor = 'default'
+        }
       }
     }
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.drawing-tools {
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 10px;
+}
+
+.tool-container {
+  margin-bottom: 15px;
+}
+
+.tool-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-button {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: #f5f7fa;
+  }
+
+  &.active {
+    background-color: #ecf5ff;
+    color: #409EFF;
+  }
+
+  i {
+    font-size: 18px;
+    margin-right: 10px;
+  }
+}
+
+.zoom-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.zoom-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #f5f7fa;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: #e4e7ed;
+  }
+
+  i {
+    font-size: 18px;
+    color: #606266;
+  }
+}
+</style>

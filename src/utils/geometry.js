@@ -1,3 +1,5 @@
+import { loadModules } from 'esri-loader'
+
 /**
  * Utilitários para manipulação de geometrias
  */
@@ -27,8 +29,8 @@ export function formatArea(area) {
  * @returns {Object} - Geometria simplificada
  */
 export async function simplifyGeometry(geometry, tolerance = 10) {
-  const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"]);
-  return geometryEngine.simplify(geometry);
+  const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+  return geometryEngine.simplify(geometry, tolerance)
 }
 
 /**
