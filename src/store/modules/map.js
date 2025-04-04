@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 import { loadEsriModules } from "@/utils/esri-loader-config";
 import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
 
