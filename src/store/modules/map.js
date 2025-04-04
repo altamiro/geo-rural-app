@@ -30,14 +30,12 @@ const actions = {
       commit('SET_LOADING', true)
 
       // Load required modules
-      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand, Sketch, SketchViewModel] = await loadModules([
+      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadModules([
         "esri/Map",
         "esri/views/MapView",
         "esri/layers/GraphicsLayer",
         "esri/widgets/BasemapGallery",
-        "esri/widgets/Expand",
-        "esri/widgets/Sketch",
-        "esri/widgets/Sketch/SketchViewModel"
+        "esri/widgets/Expand"
       ])
 
       // Create graphics layer
@@ -71,30 +69,29 @@ const actions = {
 
       view.ui.add(bgExpand, "top-right")
 
-      // Create sketch view model for drawing tools
-      const sketchViewModel = new SketchViewModel({
-        view: view,
-        layer: graphicsLayer,
-        defaultCreateOptions: {
-          mode: "freehand"
-        }
-      })
-
       // Store references
       commit('SET_MAP', map)
       commit('SET_VIEW', view)
       commit('SET_BASEMAP_GALLERY', basemapGallery)
       commit('SET_GRAPHICS_LAYER', graphicsLayer)
-      commit('SET_SKETCH_VIEW_MODEL', sketchViewModel)
 
       commit('SET_LOADING', false)
-      return true
+      return { map, view, graphicsLayer }
     } catch (error) {
       console.error("Error initializing map:", error)
       commit('SET_ERROR', "Erro ao inicializar o mapa: " + error.message)
       commit('SET_LOADING', false)
-      return false
+      return null
     }
+  },
+
+  /**
+   * Set the sketch view model
+   * @param {Object} context - Vuex context
+   * @param {Object} sketchViewModel - SketchViewModel instance
+   */
+  SET_SKETCH_VIEW_MODEL({ commit }, sketchViewModel) {
+    commit('SET_SKETCH_VIEW_MODEL', sketchViewModel)
   },
 
   /**
@@ -142,33 +139,17 @@ const actions = {
   },
 
   /**
-   * Start the drawing process
-   * @param {Object} context - Vuex context
-   * @param {String} geometryType - Type of geometry to draw
-   */
-  startDrawing({ state }, geometryType) {
-    if (state.sketchViewModel) {
-      state.sketchViewModel.create(geometryType)
-    }
-  },
-
-  /**
-   * Cancel the current drawing operation
-   * @param {Object} context - Vuex context
-   */
-  cancelDrawing({ state }) {
-    if (state.sketchViewModel) {
-      state.sketchViewModel.cancel()
-    }
-  },
-
-  /**
    * Zoom to a specific geometry
    * @param {Object} context - Vuex context
-   * @param {Object} geometry - Esri geometry object
+   * @param {String} layerId - Layer ID to zoom to
    */
-  zoomToGeometry({ state }, geometry) {
-    if (state.view) {
+  zoomToGeometry({ state, rootState }, layerId) {
+    if (!state.view) return
+
+    // Get the geometry from the layers store
+    const geometry = rootState.layers.layerGeometries[layerId]
+
+    if (geometry) {
       state.view.goTo(geometry)
     }
   },

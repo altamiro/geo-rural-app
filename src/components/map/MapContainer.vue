@@ -25,8 +25,8 @@
         el-tooltip(content="Buscar" placement="top")
           i.el-icon-search
       .map-tool-button(@click="activateTool('zoom-in')")
-        el-tooltip(content="Biblioteca" placement="top")
-          i.el-icon-reading
+        el-tooltip(content="Zoom +" placement="top")
+          i.el-icon-zoom-in
 </template>
 
 <script>
@@ -67,14 +67,15 @@ export default {
     this.initializeMap()
   },
   methods: {
-    ...mapMutations([
-      'SET_PROPERTY_POLYGON',
-      'SET_PROPERTY_AREA'
-    ]),
-    ...mapActions([
-      'validatePropertyLocation',
-      'calculateAreas'
-    ]),
+    ...mapMutations({
+      SET_PROPERTY_POLYGON: 'property/SET_PROPERTY_POLYGON',
+      SET_PROPERTY_AREA: 'property/SET_PROPERTY_AREA'
+    }),
+    ...mapActions({
+      validatePropertyLocation: 'property/validatePropertyLocation',
+      calculateAreas: 'property/calculateAreas',
+      storeSketchViewModel: 'map/SET_SKETCH_VIEW_MODEL'
+    }),
     async initializeMap() {
       try {
         // Usar o serviço para inicializar o mapa
@@ -87,6 +88,9 @@ export default {
 
         // Inicializar o modelo de desenho
         this.sketchViewModel = await ArcGISService.initializeSketchViewModel(this.view, this.graphicsLayer)
+
+        // Armazenar o SketchViewModel no store
+        this.storeSketchViewModel(this.sketchViewModel)
 
         // Configurar eventos do mapa
         this.setupMapEvents()
@@ -110,15 +114,25 @@ export default {
       })
 
       // Eventos do modelo de desenho
-      this.sketchViewModel.on("create", (event) => {
-        if (event.state === "complete") {
-          if (this.selectedLayer === LAYER_TYPES.PROPERTY) {
-            this.handlePropertyDraw(event.graphic.geometry)
-          } else if (this.selectedLayer && this.propertyPolygon) {
-            this.handleLayerDraw(event.graphic, this.selectedLayer)
+      if (this.sketchViewModel) {
+        this.sketchViewModel.on("create", (event) => {
+          if (event.state === "complete") {
+            this.handleDrawComplete(event.graphic, event.tool)
           }
-        }
-      })
+        })
+      }
+    },
+
+    handleDrawComplete(graphic, tool) {
+      if (!graphic || !graphic.geometry) return
+
+      const layerType = this.selectedLayer
+
+      if (layerType === LAYER_TYPES.PROPERTY) {
+        this.handlePropertyDraw(graphic.geometry)
+      } else if (layerType && this.propertyPolygon) {
+        this.handleLayerDraw(graphic, layerType)
+      }
     },
 
     async handlePropertyDraw(geometry) {
@@ -138,7 +152,9 @@ export default {
           this.$emit('property-drawn')
         } else {
           // Remover o gráfico inválido e mostrar erro
-          this.graphicsLayer.remove(this.propertyGraphic)
+          if (this.propertyGraphic) {
+            this.graphicsLayer.remove(this.propertyGraphic)
+          }
           this.$message.error(MESSAGES.INVALID_LOCATION)
         }
       } catch (error) {
@@ -197,7 +213,22 @@ export default {
         }
 
         // Se for válido, armazenar a camada e recalcular áreas
-        // (Seria adicionado no Vuex store dependendo do tipo de camada)
+        // Adicionar a camada via Vuex
+        this.$store.dispatch('layers/addLayer', {
+          id: layerType,
+          name: this.getLayerName(layerType),
+          category: this.getLayerCategory(layerType),
+          geometry,
+          symbolType: 'default'
+        }).then(result => {
+          if (result.success) {
+            this.$message.success(result.message)
+          } else {
+            this.$message.error(result.message)
+          }
+        })
+
+        // Recalcular áreas
         this.calculateAreas()
 
       } catch (error) {
@@ -222,17 +253,23 @@ export default {
 
         case 'location':
           // Ir para localização do usuário
-          navigator.geolocation.getCurrentPosition(
-            position => {
-              this.view.goTo({
-                center: [position.coords.longitude, position.coords.latitude],
-                zoom: 14
-              })
-            },
-            error => {
-              this.$message.error('Não foi possível obter sua localização.')
-            }
-          )
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              position => {
+                this.view.goTo({
+                  center: [position.coords.longitude, position.coords.latitude],
+                  zoom: 14
+                })
+              },
+              error => {
+                console.error('Erro ao obter localização:', error)
+                this.$message.error('Não foi possível obter sua localização.')
+              },
+              { enableHighAccuracy: true }
+            )
+          } else {
+            this.$message.error('Geolocalização não é suportada pelo seu navegador.')
+          }
           break
 
         case 'search':
@@ -249,21 +286,27 @@ export default {
       }
     },
 
-    async startDrawing() {
-      if (!this.selectedLayer) {
+    startDrawing(layerType) {
+      if (!layerType) {
         this.$message.warning('Selecione uma camada para desenhar.')
         return
       }
 
-      if (!this.propertyPolygon && this.selectedLayer !== LAYER_TYPES.PROPERTY) {
+      if (!this.propertyPolygon && layerType !== LAYER_TYPES.PROPERTY) {
         this.$message.warning(MESSAGES.PROPERTY_REQUIRED)
         return
       }
 
       // Definir a ferramenta de desenho apropriada com base na camada
       let geometryType = GEOMETRY_TYPES.POLYGON
-      if (this.selectedLayer === LAYER_TYPES.HEADQUARTERS) {
+      if (layerType === LAYER_TYPES.HEADQUARTERS) {
         geometryType = GEOMETRY_TYPES.POINT
+      }
+
+      // Verificar se temos o SketchViewModel
+      if (!this.sketchViewModel) {
+        this.$message.error("Ferramentas de desenho não inicializadas corretamente.")
+        return
       }
 
       // Usar o SketchViewModel para iniciar o desenho
@@ -271,17 +314,17 @@ export default {
 
       // Criar e aplicar símbolos personalizados para o desenho
       try {
-        const symbolColor = this.getSymbolColorForLayer(this.selectedLayer)
-        const symbol = await ArcGISService.createSymbol(
+        const symbolColor = this.getSymbolColorForLayer(layerType)
+        ArcGISService.createSymbol(
           geometryType === GEOMETRY_TYPES.POINT ? 'point' : 'polygon',
           symbolColor
-        )
-
-        // Aplicar o símbolo às opções de criação
-        this.sketchViewModel.updateCreateOptions({
-          polylineSymbol: symbol,
-          polygonSymbol: symbol,
-          pointSymbol: symbol
+        ).then(symbol => {
+          // Aplicar o símbolo às opções de criação
+          this.sketchViewModel.updateCreateOptions({
+            polylineSymbol: symbol,
+            polygonSymbol: symbol,
+            pointSymbol: symbol
+          })
         })
       } catch (error) {
         console.error("Erro ao criar símbolo:", error)
@@ -305,6 +348,42 @@ export default {
       }
 
       return colors[layerType] || [128, 128, 128, 0.5]
+    },
+
+    getLayerName(layerType) {
+      const layerNames = {
+        [LAYER_TYPES.PROPERTY]: 'Área do Imóvel',
+        [LAYER_TYPES.HEADQUARTERS]: 'Sede do Imóvel',
+        [LAYER_TYPES.CONSOLIDATED]: 'Área Consolidada',
+        [LAYER_TYPES.NATIVE]: 'Vegetação Nativa',
+        [LAYER_TYPES.FALLOW]: 'Área de Pousio',
+        [LAYER_TYPES.ROADWAY]: 'Rodovia',
+        [LAYER_TYPES.RAILWAY]: 'Ferrovia',
+        [LAYER_TYPES.POWERLINE]: 'Linha de Transmissão',
+        [LAYER_TYPES.PPA]: 'Área de Preservação Permanente',
+        [LAYER_TYPES.RESTRICTED]: 'Uso Restrito',
+        [LAYER_TYPES.RESERVE]: 'Reserva Legal'
+      }
+      return layerNames[layerType] || layerType
+    },
+
+    getLayerCategory(layerType) {
+      // Mapear tipos de camada para categorias
+      const categoryMap = {
+        [LAYER_TYPES.PROPERTY]: 'property',
+        [LAYER_TYPES.HEADQUARTERS]: 'property',
+        [LAYER_TYPES.CONSOLIDATED]: 'soil_coverage',
+        [LAYER_TYPES.NATIVE]: 'soil_coverage',
+        [LAYER_TYPES.FALLOW]: 'soil_coverage',
+        [LAYER_TYPES.ROADWAY]: 'administrative',
+        [LAYER_TYPES.RAILWAY]: 'administrative',
+        [LAYER_TYPES.POWERLINE]: 'administrative',
+        [LAYER_TYPES.PPA]: 'restricted_use',
+        [LAYER_TYPES.RESTRICTED]: 'restricted_use',
+        [LAYER_TYPES.RESERVE]: 'legal_reserve'
+      }
+
+      return categoryMap[layerType] || 'other'
     }
   },
   watch: {
@@ -312,9 +391,6 @@ export default {
       if (this.sketchViewModel && newLayer) {
         // Cancelar qualquer desenho em andamento
         this.sketchViewModel.cancel()
-
-        // Iniciar novo desenho com a geometria apropriada
-        this.startDrawing()
       }
     }
   }

@@ -13,7 +13,7 @@
             el-col(:span="4")
               .category-card
                 .category-icon
-                  img(src="../assets/images/property-icon.png")
+                  i.el-icon-s-home
                 h4 Imóvel
                 el-select(v-model="selectedProperty" placeholder="Selecione" @change="onLayerTypeSelected")
                   el-option(v-for="item in propertyOptions" :key="item.value" :label="item.label" :value="item.value")
@@ -21,7 +21,7 @@
             el-col(:span="4")
               .category-card
                 .category-icon
-                  img(src="../assets/images/soil-icon.png")
+                  i.el-icon-s-grid
                 h4 Cobertura do solo
                 el-select(v-model="selectedSoilCoverage" placeholder="Selecione" :disabled="!propertyDrawn" @change="onLayerTypeSelected")
                   el-option(v-for="item in soilCoverageOptions" :key="item.value" :label="item.label" :value="item.value")
@@ -29,7 +29,7 @@
             el-col(:span="4")
               .category-card
                 .category-icon
-                  img(src="../assets/images/administrative-icon.png")
+                  i.el-icon-s-promotion
                 h4 Servidão administrativa
                 el-select(v-model="selectedAdministrativeService" placeholder="Selecione" :disabled="!propertyDrawn" @change="onLayerTypeSelected")
                   el-option(v-for="item in serviceOptions" :key="item.value" :label="item.label" :value="item.value")
@@ -37,7 +37,7 @@
             el-col(:span="4")
               .category-card
                 .category-icon
-                  img(src="../assets/images/usage-icon.png")
+                  i.el-icon-s-flag
                 h4 App / Uso Restrito
                 el-select(v-model="selectedUsage" placeholder="Selecione" :disabled="!propertyDrawn" @change="onLayerTypeSelected")
                   el-option(v-for="item in usageOptions" :key="item.value" :label="item.label" :value="item.value")
@@ -45,7 +45,7 @@
             el-col(:span="4")
               .category-card
                 .category-icon
-                  img(src="../assets/images/legal-icon.png")
+                  i.el-icon-s-check
                 h4 Reserva legal
                 el-select(v-model="selectedLegalReserve" placeholder="Selecione" :disabled="!propertyDrawn" @change="onLayerTypeSelected")
                   el-option(v-for="item in legalReserveOptions" :key="item.value" :label="item.label" :value="item.value")
@@ -53,6 +53,7 @@
     .geo-map-container
       // Componente do mapa
       map-container(
+        ref="mapContainer"
         :selectedLayer="selectedLayer"
         @property-drawn="onPropertyDrawn"
         @toggle-layer-panel="toggleSidebar('layers')"
@@ -64,7 +65,7 @@
         drawing-tools(
           :selectedLayer="selectedLayer"
           :isPropertyDrawn="propertyDrawn"
-          @start-drawing="startDrawing"
+          @draw="handleDraw"
         )
 
       // Informações da propriedade
@@ -75,7 +76,7 @@
           :administrativeServiceArea="administrativeServiceArea"
           :anthropizedArea="anthropizedArea"
           @edit-layer="editLayer"
-          @delete-layer="deleteLayer"
+          @delete-layer="handleDeleteLayer"
         )
 
       // Painel lateral com diferentes visões
@@ -90,12 +91,11 @@
             layer-list(
               v-if="currentSidebarView === 'layers'"
               :selectedLayerId="selectedLayerId"
-              :layers="activeLayers"
               @select-layer="viewLayerDetails"
               @edit-layer="editLayer"
               @layer-deleted="handleLayerDeleted"
-              @zoom-to-layer="zoomToLayer"
-              @visibility-changed="toggleLayerVisibility"
+              @zoom-to-layer="handleZoomToLayer"
+              @visibility-changed="handleToggleLayerVisibility"
               @refresh="refreshLayerList"
             )
 
@@ -108,7 +108,7 @@
               @back="showLayerList"
               @edit-layer="editLayer"
               @layer-deleted="handleLayerDeleted"
-              @zoom-to-layer="zoomToLayer"
+              @zoom-to-layer="handleZoomToLayer"
               @style-changed="updateLayerStyle"
             )
 
@@ -154,7 +154,7 @@ import SidebarContainer from '@/components/sidebar/SidebarContainer.vue'
 import LayerList from '@/components/sidebar/LayerList.vue'
 import LayerDetails from '@/components/sidebar/LayerDetails.vue'
 import ValidationPanel from '@/components/sidebar/ValidationPanel.vue'
-import { mapState, mapGetters, mapActions, mapMutations } from 'vuex'
+import { mapState, mapGetters, mapActions } from 'vuex'
 import { loadModules } from 'esri-loader'
 import { LAYER_TYPES } from '@/utils/constants'
 
@@ -250,13 +250,13 @@ export default {
     }
   },
   methods: {
-    ...mapActions([
-      'initMap',
-      'calculateAreas',
-      'zoomToGeometry',
-      'toggleLayerVisibility',
-      'deleteLayer'
-    ]),
+    ...mapActions({
+      initializeMap: 'map/initializeMap',
+      calculateAreas: 'property/calculateAreas',
+      zoomToGeometry: 'map/zoomToGeometry',
+      toggleLayerVisibility: 'layers/toggleLayerVisibility',
+      deleteLayerAction: 'layers/deleteLayer'
+    }),
     // Quando a propriedade é desenhada
     onPropertyDrawn() {
       this.propertyDrawn = true
@@ -334,7 +334,6 @@ export default {
     // Método para atualizar a lista de camadas
     refreshLayerList() {
       // Aqui poderia ter uma lógica para recarregar camadas do servidor se necessário
-      // Por enquanto, apenas atualizamos o status
       this.$nextTick(() => {
         this.$message.success('Lista de camadas atualizada', { duration: 1000 })
       })
@@ -390,7 +389,7 @@ export default {
     // Método para atualizar o estilo visual da camada
     updateLayerStyle({ layerId, style }) {
       // Chamar ação do Vuex para atualizar o estilo
-      this.$store.dispatch('layers/updateLayerStyle', { layerId, style })
+      this.$store.dispatch('layers/updateLayerSymbology', { id: layerId, symbology: style })
         .then(() => {
           this.$message.success('Estilo da camada atualizado')
         })
@@ -401,9 +400,10 @@ export default {
     },
 
     // Métodos de gerenciamento de camadas
-    startDrawing() {
+    handleDraw(drawAction) {
       if (this.selectedLayer) {
-        this.$emit('start-drawing', this.selectedLayer)
+        // Lógica para iniciar o desenho
+        this.$refs.mapContainer.startDrawing(this.selectedLayer)
       } else {
         this.$message.warning('Selecione uma camada antes de iniciar o desenho.')
       }
@@ -421,12 +421,12 @@ export default {
       this.closeSidebar()
     },
 
-    deleteLayer(layerData) {
+    handleDeleteLayer(layerData) {
       // Identificar a camada
       const layerId = typeof layerData === 'string' ? layerData : layerData.id
 
       // Excluir a camada
-      this.deleteLayer(layerId)
+      this.deleteLayerAction(layerId)
         .then(() => {
           this.$message.success('Camada excluída com sucesso!')
 
@@ -454,9 +454,13 @@ export default {
       }
     },
 
-    zoomToLayer(layerId) {
+    handleZoomToLayer(layerId) {
       this.zoomToGeometry(layerId)
       this.closeSidebar()
+    },
+
+    handleToggleLayerVisibility({ id, visible }) {
+      this.toggleLayerVisibility({ id, visible })
     },
 
     // Método para selecionar uma camada nos selects com base no ID
@@ -492,38 +496,61 @@ export default {
       if (!this.searchQuery) return
 
       try {
+        // Exibir indicador de carregamento
+        const loading = this.$loading({
+          lock: true,
+          text: 'Buscando localização...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        })
+
         // Usar o serviço ArcGIS para geocodificação
         const [Locator] = await loadModules(["esri/tasks/Locator"])
 
-        const locator = new Locator("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer")
+        const locator = new Locator({
+          url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+        })
 
         const params = {
           address: {
             SingleLine: this.searchQuery
-          }
+          },
+          outFields: ["*"]
         }
 
-        const results = await locator.addressToLocations(params)
+        try {
+          const results = await locator.addressToLocations(params)
 
-        if (results.length > 0) {
-          const firstResult = results[0]
+          if (results.length > 0) {
+            const firstResult = results[0]
 
-          // Zoom para o local encontrado
-          this.$refs.mapContainer.view.goTo({
-            target: firstResult.location,
-            zoom: 14
-          })
+            // Zoom para o local encontrado
+            if (this.$refs.mapContainer && this.$refs.mapContainer.view) {
+              this.$refs.mapContainer.view.goTo({
+                target: firstResult.location,
+                zoom: 14
+              })
 
-          this.$message.success(`Localização encontrada: ${firstResult.address}`)
-        } else {
-          this.$message.warning('Nenhum resultado encontrado.')
+              this.$message.success(`Localização encontrada: ${firstResult.address}`)
+            } else {
+              this.$message.warning('O mapa ainda não está inicializado completamente.')
+            }
+          } else {
+            this.$message.warning('Nenhum resultado encontrado.')
+          }
+        } catch (error) {
+          console.error('Erro na busca:', error)
+          this.$message.error('Não foi possível realizar a busca.')
+        } finally {
+          loading.close()
         }
       } catch (error) {
-        console.error('Erro na busca:', error)
-        this.$message.error('Não foi possível realizar a busca.')
+        this.$message.error('Erro ao inicializar o serviço de busca.')
+        console.error('Erro ao inicializar busca:', error)
       }
     }
   }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -590,9 +617,9 @@ export default {
     align-items: center;
     justify-content: center;
 
-    img {
-      max-width: 100%;
-      max-height: 100%;
+    i {
+      font-size: 32px;
+      color: $primary-color;
     }
   }
 

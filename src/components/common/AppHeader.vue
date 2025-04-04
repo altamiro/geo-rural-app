@@ -2,7 +2,6 @@
   .app-header
     .header-container
       .logo
-        img(src="../assets/logo.png" alt="Logo")
         .app-title Georreferenciamento de Imóveis Rurais
 
       .header-actions
@@ -110,11 +109,6 @@ export default {
 .logo {
   display: flex;
   align-items: center;
-
-  img {
-    height: 40px;
-    margin-right: 15px;
-  }
 
   .app-title {
     font-size: 18px;

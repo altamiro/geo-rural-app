@@ -13,6 +13,11 @@ class CalculationService {
    */
   async calculateArea(geometry) {
     try {
+      if (!geometry) {
+        console.warn("Geometria não definida para cálculo de área")
+        return 0
+      }
+
       const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
 
       // Calcular área em metros quadrados
@@ -33,6 +38,9 @@ class CalculationService {
    * @returns {Number} - Área líquida
    */
   calculateNetArea(propertyArea, administrativeArea) {
+    if (!propertyArea || propertyArea <= 0) return 0
+    if (!administrativeArea) administrativeArea = 0
+
     return Math.max(0, propertyArea - administrativeArea)
   }
 
@@ -43,7 +51,9 @@ class CalculationService {
    * @returns {Number} - Percentual (0-100)
    */
   calculatePercentage(value, total) {
-    if (!total) return 0
+    if (!total || total <= 0) return 0
+    if (!value || value < 0) value = 0
+
     return (value / total) * 100
   }
 
@@ -55,6 +65,14 @@ class CalculationService {
    */
   async calculateOverlap(geometry1, geometry2) {
     try {
+      if (!geometry1 || !geometry2) {
+        return {
+          geometry: null,
+          area: 0,
+          hasOverlap: false
+        }
+      }
+
       const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
 
       // Calcular interseção
@@ -95,12 +113,37 @@ class CalculationService {
    */
   async calculateCoverage(baseGeometry, coverageGeometries) {
     try {
+      if (!baseGeometry) {
+        return {
+          coverageGeometry: null,
+          coveredArea: 0,
+          uncoveredArea: 0,
+          coveragePercentage: 0
+        }
+      }
+
+      // Se não tem geometrias de cobertura, retorna 0%
+      if (!coverageGeometries || !Array.isArray(coverageGeometries) || coverageGeometries.length === 0) {
+        const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+        const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters")
+        const baseArea = squareMetersToHectares(baseAreaInSqMeters)
+
+        return {
+          coverageGeometry: null,
+          coveredArea: 0,
+          uncoveredArea: baseArea,
+          coveragePercentage: 0
+        }
+      }
+
       const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
 
       // União de todas as geometrias de cobertura
       let unionGeometry = null
 
       for (const geometry of coverageGeometries) {
+        if (!geometry) continue
+
         if (!unionGeometry) {
           unionGeometry = geometry
         } else {
@@ -159,6 +202,26 @@ class CalculationService {
         uncoveredArea: 0,
         coveragePercentage: 0
       }
+    }
+  }
+
+  /**
+   * Verifica se duas geometrias se sobrepõem
+   * @param {Object} geometry1 - Primeira geometria
+   * @param {Object} geometry2 - Segunda geometria
+   * @returns {Promise<Boolean>} - Se as geometrias se sobrepõem
+   */
+  async doGeometriesOverlap(geometry1, geometry2) {
+    try {
+      if (!geometry1 || !geometry2) return false
+
+      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      return geometryEngine.overlaps(geometry1, geometry2) ||
+             geometryEngine.contains(geometry1, geometry2) ||
+             geometryEngine.contains(geometry2, geometry1)
+    } catch (error) {
+      console.error("Erro ao verificar sobreposição:", error)
+      return false
     }
   }
 }

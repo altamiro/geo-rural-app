@@ -63,9 +63,9 @@ export default {
     }
   },
   methods: {
-    ...mapActions([
-      'deleteLayer'
-    ]),
+    ...mapActions({
+      deleteLayer: 'layers/deleteLayer'
+    }),
     activateTool(tool) {
       // Valida se uma camada está selecionada
       if (!this.isLayerSelected) {
@@ -86,6 +86,9 @@ export default {
         console.error("Sketch view model não inicializado")
         return
       }
+
+      // Emitir evento para o componente pai saber qual ferramenta foi ativada
+      this.$emit('draw', { tool, layerId: this.selectedLayer })
 
       // Definir modo de criação para cada ferramenta
       switch (tool) {

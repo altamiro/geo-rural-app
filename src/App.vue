@@ -5,7 +5,7 @@
         app-header
       el-container
         el-main
-          router-view
+          geo-view
     el-footer
       app-footer
 </template>
@@ -13,12 +13,14 @@
 <script>
 import AppHeader from './components/common/AppHeader.vue'
 import AppFooter from './components/common/AppFooter.vue'
+import GeoView from './views/GeoView.vue'
 
 export default {
   name: 'App',
   components: {
     AppHeader,
-    AppFooter
+    AppFooter,
+    GeoView
   }
 }
 </script>

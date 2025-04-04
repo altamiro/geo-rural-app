@@ -55,6 +55,13 @@ const actions = {
     try {
       commit('SET_LOADING', true)
 
+      // Validate inputs
+      if (!id || !name || !geometry) {
+        commit('SET_ERROR', "Dados da camada incompletos.")
+        commit('SET_LOADING', false)
+        return { success: false, message: "Dados da camada incompletos." }
+      }
+
       let isValid = true
       let validationMessage = null
       let finalGeometry = geometry
@@ -65,6 +72,12 @@ const actions = {
           if (id === LAYER_TYPES.PROPERTY) {
             // Validate property is within municipality in SP
             const municipalityId = rootState.property.municipalityId
+            if (!municipalityId) {
+              commit('SET_ERROR', "Município não selecionado.")
+              commit('SET_LOADING', false)
+              return { success: false, message: "Município não selecionado." }
+            }
+
             isValid = await ValidationService.validatePropertyLocation(geometry, municipalityId)
             validationMessage = isValid
               ? "Área do imóvel validada com sucesso."
@@ -72,6 +85,12 @@ const actions = {
           } else if (id === LAYER_TYPES.HEADQUARTERS) {
             // Validate headquarters is within property and not overlapping hydrography
             const propertyGeometry = state.layerGeometries[LAYER_TYPES.PROPERTY]
+            if (!propertyGeometry) {
+              commit('SET_ERROR', MESSAGES.PROPERTY_REQUIRED)
+              commit('SET_LOADING', false)
+              return { success: false, message: MESSAGES.PROPERTY_REQUIRED }
+            }
+
             const hydrographyGeometries = [] // Would be populated from a service or other layers
 
             const validation = await ValidationService.validateHeadquarters(
@@ -86,8 +105,16 @@ const actions = {
           break
 
         case LAYER_CATEGORIES.SOIL_COVERAGE:
-          // Validate soil coverage layers
+        case LAYER_CATEGORIES.ADMINISTRATIVE:
+        case LAYER_CATEGORIES.RESTRICTED_USE:
+        case LAYER_CATEGORIES.LEGAL_RESERVE:
+          // Validate other layers are within property
           const propertyGeometry = state.layerGeometries[LAYER_TYPES.PROPERTY]
+          if (!propertyGeometry) {
+            commit('SET_ERROR', MESSAGES.PROPERTY_REQUIRED)
+            commit('SET_LOADING', false)
+            return { success: false, message: MESSAGES.PROPERTY_REQUIRED }
+          }
 
           const validation = await ValidationService.validateSoilCoverage(
             geometry,
@@ -102,13 +129,6 @@ const actions = {
           if (isValid && validation.clipResult) {
             finalGeometry = validation.clipResult
           }
-          break
-
-        // Additional category validations
-        case LAYER_CATEGORIES.ADMINISTRATIVE:
-        case LAYER_CATEGORIES.RESTRICTED_USE:
-        case LAYER_CATEGORIES.LEGAL_RESERVE:
-          // Similar validations for other categories
           break
       }
 
@@ -127,7 +147,7 @@ const actions = {
       const layer = {
         id,
         name,
-        category,
+        category: category || 'unknown',
         area,
         timestamp: new Date().toISOString(),
         symbolType: symbolType || 'default'
@@ -178,9 +198,6 @@ const actions = {
         commit('SET_LOADING', false)
         return { success: false, message: "Camada não encontrada." }
       }
-
-      // Re-run validation as in addLayer
-      // For brevity, validation logic is omitted here
 
       // Calculate new area
       const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
@@ -278,6 +295,15 @@ const actions = {
   },
 
   /**
+   * Update layer symbology
+   * @param {Object} context - Vuex context
+   * @param {Object} payload - Layer ID and symbology object
+   */
+  updateLayerSymbology({ commit }, { id, symbology }) {
+    commit('SET_LAYER_SYMBOLOGY', { id, symbology })
+  },
+
+  /**
    * Validate if property is completely covered by layers
    * @param {Object} context - Vuex context
    */
@@ -323,6 +349,10 @@ const mutations = {
     // Add only if not already present
     if (!state.activeLayers.some(l => l.id === layer.id)) {
       state.activeLayers.push(layer)
+    } else {
+      // If layer exists, update it
+      const index = state.activeLayers.findIndex(l => l.id === layer.id)
+      state.activeLayers[index] = { ...state.activeLayers[index], ...layer }
     }
   },
 

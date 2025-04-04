@@ -76,6 +76,10 @@ class ArcGISService {
         "esri/widgets/Sketch/SketchViewModel"
       ])
 
+      if (!view || !layer) {
+        throw new Error("View ou layer não definidos para SketchViewModel")
+      }
+
       const sketchViewModel = new SketchViewModel({
         view: view,
         layer: layer,
@@ -100,6 +104,10 @@ class ArcGISService {
    */
   async createGraphic(geometry, symbol, attributes = {}) {
     try {
+      if (!geometry) {
+        throw new Error("Geometria não definida para createGraphic")
+      }
+
       const [Graphic] = await loadModules(["esri/Graphic"])
 
       return new Graphic({
@@ -121,6 +129,15 @@ class ArcGISService {
    */
   async createSymbol(type, color) {
     try {
+      if (!type) {
+        throw new Error("Tipo de símbolo não definido")
+      }
+
+      if (!color || !Array.isArray(color) || color.length !== 4) {
+        // Fallback para cor padrão se não receber uma cor válida
+        color = [128, 128, 128, 0.5]
+      }
+
       let symbolModule
       let symbolOptions = {}
 
@@ -166,6 +183,59 @@ class ArcGISService {
     } catch (error) {
       console.error(`Erro ao criar símbolo ${type}:`, error)
       throw error
+    }
+  }
+
+  /**
+   * Valida se um ponto está dentro de um polígono
+   * @param {Object} point - Ponto a ser verificado
+   * @param {Object} polygon - Polígono de referência
+   * @returns {Promise<Boolean>} - Se o ponto está dentro do polígono
+   */
+  async isPointInPolygon(point, polygon) {
+    try {
+      if (!point || !polygon) {
+        throw new Error("Ponto ou polígono não definidos")
+      }
+
+      const [geometryEngine] = await loadModules(["esri/geometry/geometryEngine"])
+      return geometryEngine.contains(polygon, point)
+    } catch (error) {
+      console.error("Erro ao verificar ponto no polígono:", error)
+      return false
+    }
+  }
+
+  /**
+   * Busca localização usando o serviço de geocodificação ArcGIS
+   * @param {String} searchText - Texto de busca
+   * @returns {Promise<Array>} - Lista de resultados encontrados
+   */
+  async searchLocation(searchText) {
+    try {
+      if (!searchText) {
+        return []
+      }
+
+      const [Locator] = await loadModules(["esri/tasks/Locator"])
+
+      const locator = new Locator({
+        url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+      })
+
+      const params = {
+        address: {
+          SingleLine: searchText
+        },
+        outFields: ["*"],
+        maxLocations: 5
+      }
+
+      const results = await locator.addressToLocations(params)
+      return results
+    } catch (error) {
+      console.error("Erro ao buscar localização:", error)
+      return []
     }
   }
 }

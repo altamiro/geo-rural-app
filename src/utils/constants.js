@@ -68,3 +68,95 @@ export const INITIAL_MAP_ZOOM = 7;
 
 // Tolerância para cálculos geométricos (em metros)
 export const GEOMETRY_TOLERANCE = 0.1;
+
+// Status de validação
+export const VALIDATION_STATUS = {
+  SUCCESS: 'success',
+  WARNING: 'warning',
+  ERROR: 'error',
+  INFO: 'info'
+};
+
+// Intervalos de cobertura para status
+export const COVERAGE_THRESHOLDS = {
+  WARNING: 95, // Abaixo disso é exception
+  SUCCESS: 99.9 // Acima disso é success
+};
+
+// Lista de IDs de município no estado de SP
+export const SP_MUNICIPALITIES = [
+  'SP001', 'SP002', 'SP003', 'SP004', 'SP005',
+  'SP006', 'SP007', 'SP008', 'SP009', 'SP010'
+];
+
+// Mapeamento de tipos de camada para seus nomes legíveis
+export const LAYER_TYPE_NAMES = {
+  'property': 'Área do Imóvel',
+  'headquarters': 'Sede do Imóvel',
+  'consolidated': 'Área Consolidada',
+  'native': 'Vegetação Nativa',
+  'fallow': 'Área de Pousio',
+  'roadway': 'Rodovia',
+  'railway': 'Ferrovia',
+  'powerline': 'Linha de Transmissão',
+  'ppa': 'Área de Preservação Permanente',
+  'restricted': 'Uso Restrito',
+  'reserve': 'Reserva Legal'
+};
+
+// Mapeamento de tipos de camada para suas categorias
+export const LAYER_TYPE_CATEGORIES = {
+  'property': LAYER_CATEGORIES.PROPERTY,
+  'headquarters': LAYER_CATEGORIES.PROPERTY,
+  'consolidated': LAYER_CATEGORIES.SOIL_COVERAGE,
+  'native': LAYER_CATEGORIES.SOIL_COVERAGE,
+  'fallow': LAYER_CATEGORIES.SOIL_COVERAGE,
+  'roadway': LAYER_CATEGORIES.ADMINISTRATIVE,
+  'railway': LAYER_CATEGORIES.ADMINISTRATIVE,
+  'powerline': LAYER_CATEGORIES.ADMINISTRATIVE,
+  'ppa': LAYER_CATEGORIES.RESTRICTED_USE,
+  'restricted': LAYER_CATEGORIES.RESTRICTED_USE,
+  'reserve': LAYER_CATEGORIES.LEGAL_RESERVE
+};
+
+// Configurações de opacidade padrão
+export const DEFAULT_OPACITY = {
+  FILL: 0.5,
+  OUTLINE: 1.0
+};
+
+// Configurações de validação
+export const VALIDATION_CONFIG = {
+  // Porcentagem mínima de sobreposição necessária para considerar uma camada dentro do imóvel
+  MIN_OVERLAP_PERCENTAGE: 95,
+  // Distância máxima (em metros) para considerar um ponto dentro de um polígono com tolerância
+  POINT_TOLERANCE: 5
+};
+
+// Formatos de data
+export const DATE_FORMATS = {
+  DISPLAY: 'DD/MM/YYYY HH:mm',
+  ISO: 'YYYY-MM-DDTHH:mm:ss.sssZ',
+  SHORT: 'DD/MM/YYYY'
+};
+
+// Unidades de medida
+export const UNITS = {
+  AREA: {
+    HECTARE: 'ha',
+    SQUARE_METER: 'm²',
+    SQUARE_KILOMETER: 'km²'
+  },
+  DISTANCE: {
+    METER: 'm',
+    KILOMETER: 'km'
+  }
+};
+
+// Fatores de conversão
+export const CONVERSION_FACTORS = {
+  SQUARE_METERS_TO_HECTARES: 0.0001,
+  HECTARES_TO_SQUARE_METERS: 10000,
+  SQUARE_METERS_TO_SQUARE_KILOMETERS: 0.000001,
+  SQUARE_KILOMETERS_TO_SQUARE_METERS: 1000000
+};
