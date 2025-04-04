@@ -1,0 +1,202 @@
+// src/assets/styles/main.scss
+
+// Import variables
+// (These are already imported globally through vue.config.js)
+
+// Reset and base styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: $font-size-base;
+  color: $text-primary;
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: $spacing-base;
+}
+
+h1 {
+  font-size: $font-size-xl;
+}
+
+h2 {
+  font-size: $font-size-large;
+}
+
+h3 {
+  font-size: $font-size-medium;
+}
+
+h4 {
+  font-size: $font-size-base;
+}
+
+p {
+  line-height: 1.6;
+  margin-bottom: $spacing-medium;
+}
+
+a {
+  color: $primary-color;
+  text-decoration: none;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Layout utilities
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $spacing-medium;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-sm {
+  gap: $spacing-small;
+}
+
+.gap-md {
+  gap: $spacing-medium;
+}
+
+.gap-lg {
+  gap: $spacing-large;
+}
+
+// Spacing utilities
+.m-0 { margin: 0; }
+.mt-1 { margin-top: $spacing-mini; }
+.mr-1 { margin-right: $spacing-mini; }
+.mb-1 { margin-bottom: $spacing-mini; }
+.ml-1 { margin-left: $spacing-mini; }
+
+.mt-2 { margin-top: $spacing-small; }
+.mr-2 { margin-right: $spacing-small; }
+.mb-2 { margin-bottom: $spacing-small; }
+.ml-2 { margin-left: $spacing-small; }
+
+.mt-3 { margin-top: $spacing-base; }
+.mr-3 { margin-right: $spacing-base; }
+.mb-3 { margin-bottom: $spacing-base; }
+.ml-3 { margin-left: $spacing-base; }
+
+.mt-4 { margin-top: $spacing-medium; }
+.mr-4 { margin-right: $spacing-medium; }
+.mb-4 { margin-bottom: $spacing-medium; }
+.ml-4 { margin-left: $spacing-medium; }
+
+.mt-5 { margin-top: $spacing-large; }
+.mr-5 { margin-right: $spacing-large; }
+.mb-5 { margin-bottom: $spacing-large; }
+.ml-5 { margin-left: $spacing-large; }
+
+// Padding utilities
+.p-0 { padding: 0; }
+.pt-1 { padding-top: $spacing-mini; }
+.pr-1 { padding-right: $spacing-mini; }
+.pb-1 { padding-bottom: $spacing-mini; }
+.pl-1 { padding-left: $spacing-mini; }
+
+.pt-2 { padding-top: $spacing-small; }
+.pr-2 { padding-right: $spacing-small; }
+.pb-2 { padding-bottom: $spacing-small; }
+.pl-2 { padding-left: $spacing-small; }
+
+.pt-3 { padding-top: $spacing-base; }
+.pr-3 { padding-right: $spacing-base; }
+.pb-3 { padding-bottom: $spacing-base; }
+.pl-3 { padding-left: $spacing-base; }
+
+.pt-4 { padding-top: $spacing-medium; }
+.pr-4 { padding-right: $spacing-medium; }
+.pb-4 { padding-bottom: $spacing-medium; }
+.pl-4 { padding-left: $spacing-medium; }
+
+.pt-5 { padding-top: $spacing-large; }
+.pr-5 { padding-right: $spacing-large; }
+.pb-5 { padding-bottom: $spacing-large; }
+.pl-5 { padding-left: $spacing-large; }
+
+// Element UI overrides
+.el-button {
+  font-weight: 500;
+}
+
+.el-card {
+  margin-bottom: $spacing-medium;
+  box-shadow: $shadow-light;
+  
+  &:hover {
+    box-shadow: $shadow-base;
+  }
+}
+
+.el-select {
+  width: 100%;
+}
+
+// Custom classes
+.card {
+  background-color: white;
+  border-radius: $border-radius-base;
+  padding: $spacing-medium;
+  box-shadow: $shadow-light;
+  
+  &:hover {
+    box-shadow: $shadow-base;
+  }
+}
+
+.highlight {
+  color: $primary-color;
+  font-weight: bold;
+}
+
+.text-success {
+  color: $success-color;
+}
+
+.text-warning {
+  color: $warning-color;
+}
+
+.text-danger {
+  color: $danger-color;
+}
+
+.text-info {
+  color: $info-color;
+}
