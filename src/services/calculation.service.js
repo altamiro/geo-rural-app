@@ -2,7 +2,7 @@
  * Serviço para cálculos de áreas e análises espaciais
  */
 import { loadModules } from 'esri-loader'
-import { squareMetersToHectares, formatArea } from '@/utils/geometry'
+import { squareMetersToHectares } from '@/utils/geometry'
 import { GEOMETRY_TOLERANCE } from '@/utils/constants'
 
 class CalculationService {

@@ -117,7 +117,7 @@ const actions = {
         // Fallback calculation
         const coveredArea = Object.entries(layerGeometries)
           .filter(([key]) => key !== LAYER_TYPES.PROPERTY)
-          .reduce((sum, [key, _]) => {
+          .reduce((sum, [key]) => {
             const layer = rootState.layers.activeLayers.find(l => l.id === key)
             return sum + (layer ? layer.area : 0)
           }, 0)

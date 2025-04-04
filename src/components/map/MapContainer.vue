@@ -30,7 +30,6 @@
 </template>
 
 <script>
-import { loadModules } from 'esri-loader'
 import { mapActions, mapMutations, mapState } from 'vuex'
 import { isValidCoordinate } from '@/utils/validation'
 import { LAYER_TYPES, MESSAGES, GEOMETRY_TYPES } from '@/utils/constants'
@@ -123,7 +122,7 @@ export default {
       }
     },
 
-    handleDrawComplete(graphic, tool) {
+    handleDrawComplete(graphic) {
       if (!graphic || !graphic.geometry) return
 
       const layerType = this.selectedLayer
@@ -173,7 +172,7 @@ export default {
 
         // Usar cálculos para verificar relações espaciais
         switch (layerType) {
-          case LAYER_TYPES.HEADQUARTERS:
+          case LAYER_TYPES.HEADQUARTERS: {
             // Verificar se a sede está dentro da propriedade
             const hqOverlap = await CalculationService.calculateOverlap(
               geometry,
@@ -185,10 +184,11 @@ export default {
               errorMessage = MESSAGES.HEADQUARTERS_INSIDE
             }
             break
+          }
 
           case LAYER_TYPES.CONSOLIDATED:
           case LAYER_TYPES.NATIVE:
-          case LAYER_TYPES.FALLOW:
+          case LAYER_TYPES.FALLOW: {
             // Verificar se a camada está dentro da propriedade
             const layerOverlap = await CalculationService.calculateOverlap(
               geometry,
@@ -200,6 +200,7 @@ export default {
               errorMessage = MESSAGES.LAYER_INSIDE
             }
             break
+          }
 
           // Validações adicionais para outros tipos de camada
           // ...

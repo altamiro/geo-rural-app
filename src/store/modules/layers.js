@@ -1,7 +1,7 @@
 import ValidationService from '@/services/validation.service'
 import { loadModules } from 'esri-loader'
 import { LAYER_TYPES, LAYER_CATEGORIES, LAYER_SYMBOLOGY, MESSAGES } from '@/utils/constants'
-import { formatArea, squareMetersToHectares } from '@/utils/geometry'
+import { squareMetersToHectares } from '@/utils/geometry'
 
 // Initial state
 const state = {
@@ -68,7 +68,7 @@ const actions = {
 
       // Get the appropriate validation method based on layer type
       switch (category) {
-        case LAYER_CATEGORIES.PROPERTY:
+        case LAYER_CATEGORIES.PROPERTY: {
           if (id === LAYER_TYPES.PROPERTY) {
             // Validate property is within municipality in SP
             const municipalityId = rootState.property.municipalityId
@@ -103,11 +103,12 @@ const actions = {
             validationMessage = validation.message
           }
           break
+        }
 
         case LAYER_CATEGORIES.SOIL_COVERAGE:
         case LAYER_CATEGORIES.ADMINISTRATIVE:
         case LAYER_CATEGORIES.RESTRICTED_USE:
-        case LAYER_CATEGORIES.LEGAL_RESERVE:
+        case LAYER_CATEGORIES.LEGAL_RESERVE: {
           // Validate other layers are within property
           const propertyGeometry = state.layerGeometries[LAYER_TYPES.PROPERTY]
           if (!propertyGeometry) {
@@ -130,6 +131,7 @@ const actions = {
             finalGeometry = validation.clipResult
           }
           break
+        }
       }
 
       if (!isValid) {
@@ -307,7 +309,7 @@ const actions = {
    * Validate if property is completely covered by layers
    * @param {Object} context - Vuex context
    */
-  async validateCompleteCoverage({ commit, state, rootState }) {
+  async validateCompleteCoverage({ commit, state }) {
     try {
       const propertyGeometry = state.layerGeometries[LAYER_TYPES.PROPERTY]
 
@@ -378,8 +380,9 @@ const mutations = {
   },
 
   REMOVE_LAYER_GEOMETRY(state, id) {
-    const { [id]: removed, ...rest } = state.layerGeometries
-    state.layerGeometries = rest
+    const newGeometries = { ...state.layerGeometries }
+    delete newGeometries[id]
+    state.layerGeometries = newGeometries
   },
 
   SET_LAYER_VISIBILITY(state, { id, visible }) {

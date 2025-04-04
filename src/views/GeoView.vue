@@ -400,7 +400,7 @@ export default {
     },
 
     // Métodos de gerenciamento de camadas
-    handleDraw(drawAction) {
+    handleDraw() {
       if (this.selectedLayer) {
         // Lógica para iniciar o desenho
         this.$refs.mapContainer.startDrawing(this.selectedLayer)
