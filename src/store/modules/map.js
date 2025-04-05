@@ -9,6 +9,7 @@ const state = {
   view: null,
   basemapGallery: null,
   graphicsLayer: null,
+  municipalityLayer: null,
   sketchViewModel: null,
   selectedBasemap: "satellite",
   mapInitialized: false,
@@ -25,6 +26,60 @@ const getters = {
 
 // Actions
 const actions = {
+  async addMunicipalityLayer({ state, commit }, geometry) {
+    try {
+      // Se já existir uma camada de município, remover
+      if (state.municipalityLayer) {
+        state.map.remove(state.municipalityLayer)
+      }
+
+      const [Graphic, FeatureLayer] = await loadEsriModules([
+        "esri/Graphic",
+        "esri/layers/FeatureLayer"
+      ])
+
+      // Criar símbolo para o município
+      const symbol = {
+        type: "simple-fill",
+        color: [0, 0, 255, 0.1],  // Azul transparente
+        outline: {
+          color: [0, 0, 255, 0.7],
+          width: 2
+        }
+      }
+
+      // Criar geometria no formato Esri
+      const municipalityGraphic = new Graphic({
+        geometry: {
+          type: "polygon",
+          rings: geometry.coordinates[0]
+        },
+        symbol: symbol
+      })
+
+      // Criar camada de feature
+      const municipalityLayer = new FeatureLayer({
+        source: [municipalityGraphic],
+        objectIdField: "ObjectID",
+        fields: [],
+        geometryType: "polygon"
+      })
+
+      // Adicionar ao mapa
+      state.map.add(municipalityLayer)
+
+      // Zoom para o município
+      state.view.goTo(municipalityGraphic)
+
+      // Salvar referência da camada
+      commit('SET_MUNICIPALITY_LAYER', municipalityLayer)
+
+    } catch (error) {
+      console.error("Erro ao adicionar camada de município:", error)
+      commit('SET_ERROR', "Erro ao adicionar camada de município: " + error.message)
+    }
+  },
+
   /**
    * Initialize the map and related components
    * @param {Object} context - Vuex context
@@ -228,6 +283,9 @@ const mutations = {
 
   SET_SELECTED_BASEMAP(state, basemapId) {
     state.selectedBasemap = basemapId;
+  },
+  SET_MUNICIPALITY_LAYER(state, layer) {
+    state.municipalityLayer = layer
   },
 };
 

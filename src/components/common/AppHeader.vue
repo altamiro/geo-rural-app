@@ -22,60 +22,62 @@
 
 <script>
 import { mapActions } from 'vuex'
+import municipalitiesData from '@/dados/geojs-35-mun.json'
 
 export default {
   name: 'AppHeader',
   data() {
     return {
       selectedMunicipality: '',
-      municipalities: [
-        { id: 'SP001', name: 'São Paulo' },
-        { id: 'SP002', name: 'Campinas' },
-        { id: 'SP003', name: 'Ribeirão Preto' },
-        { id: 'SP004', name: 'São José dos Campos' },
-        { id: 'SP005', name: 'Santos' },
-        { id: 'SP006', name: 'Sorocaba' },
-        { id: 'SP007', name: 'Bauru' },
-        { id: 'SP008', name: 'Piracicaba' },
-        { id: 'SP009', name: 'Jundiaí' },
-        { id: 'SP010', name: 'São José do Rio Preto' }
-      ]
+      municipalities: municipalitiesData.features.map(feature => ({
+        id: feature.properties.id,
+        name: feature.properties.name,
+        description: feature.properties.description,
+        geometry: feature.geometry
+      }))
     }
   },
   methods: {
     ...mapActions({
-      setMunicipality: 'property/setMunicipality'
+      setMunicipality: 'property/setMunicipality',
+      addMunicipalityLayer: 'map/addMunicipalityLayer'
     }),
     changeMunicipality() {
       const municipality = this.municipalities.find(m => m.id === this.selectedMunicipality)
 
       if (municipality) {
+        // Definir município no store
         this.setMunicipality({
           id: municipality.id,
           name: municipality.name
         })
 
-        // Display confirmation message
+        // Adicionar limite do município ao mapa
+        this.addMunicipalityLayer(municipality.geometry)
+
+        // Mensagem de confirmação
         this.$message({
           message: `Município selecionado: ${municipality.name}`,
           type: 'success'
         })
+
+        // Centralizar o mapa no município
+        this.$emit('zoom-to-municipality', municipality.geometry)
       }
     },
     saveChanges() {
-      // Validate if all required data is present
+      // Mesma lógica anterior
       this.$confirm('Deseja salvar todas as alterações?', 'Confirmação', {
         confirmButtonText: 'Sim',
         cancelButtonText: 'Cancelar',
         type: 'warning'
       }).then(() => {
-        // Would submit data to backend
         this.$message({
           type: 'success',
           message: 'Dados salvos com sucesso!'
         })
       }).catch(() => {
-        // User canceled
+        // Usuário cancelou
       })
     },
     openHelp() {

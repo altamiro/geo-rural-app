@@ -51,7 +51,6 @@
                   el-option(v-for="item in legalReserveOptions" :key="item.value" :label="item.label" :value="item.value")
 
     .geo-map-container
-      // Componente do mapa
       map-container(
         ref="mapContainer"
         :selectedLayer="selectedLayer"
@@ -60,9 +59,9 @@
         @show-search="toggleSidebar('search')"
         @map-initialized="onMapInitialized"
         @sketch-view-model-ready="onSketchViewModelReady"
+        @zoom-to-municipality="handleZoomToMunicipality"
       )
 
-      // Ferramentas de desenho
       .map-tools
         drawing-tools(
           :selectedLayer="selectedLayer"
@@ -70,7 +69,6 @@
           @draw="handleDraw"
         )
 
-      // Informações da propriedade
       .info-panel
         property-info(
           :propertyArea="propertyArea"
@@ -81,7 +79,6 @@
           @delete-layer="handleDeleteLayer"
         )
 
-      // Painel lateral com diferentes visões
       transition(name="slide-right")
         .sidebar-wrapper(v-if="sidebarVisible")
           sidebar-container(
@@ -89,7 +86,6 @@
             :closable="true"
             @close="closeSidebar"
           )
-            // Lista de camadas
             layer-list(
               v-if="currentSidebarView === 'layers'"
               :selectedLayerId="selectedLayerId"
@@ -101,7 +97,6 @@
               @refresh="refreshLayerList"
             )
 
-            // Detalhes da camada
             layer-details(
               v-else-if="currentSidebarView === 'layerDetails'"
               :layer="selectedLayerDetails"
@@ -114,13 +109,11 @@
               @style-changed="updateLayerStyle"
             )
 
-            // Painel de validação
             validation-panel(
               v-else-if="currentSidebarView === 'validation'"
               @coverage-validated="handleCoverageValidation"
             )
 
-            // Busca (implementação futura)
             .search-panel(v-else-if="currentSidebarView === 'search'")
               h3.search-title Buscar Localização
               el-input(
@@ -132,12 +125,10 @@
               )
               el-button(type="primary" @click="performSearch" :disabled="!searchQuery") Buscar
 
-      // Botão para abrir o painel lateral
       .sidebar-toggle(v-if="!sidebarVisible")
         el-tooltip(content="Ver camadas" placement="left")
           el-button(icon="el-icon-d-arrow-right" circle @click="toggleSidebar('layers')")
 
-      // Botão de validação
       .validation-button
         el-tooltip(content="Validar cobertura" placement="left")
           el-button(
@@ -251,9 +242,7 @@ export default {
     // Detalhes da camada selecionada
     selectedLayerDetails() {
       return this.getLayerById(this.selectedLayerId)
-    },
-
-
+    }
   },
   methods: {
     ...mapActions({
@@ -518,7 +507,22 @@ export default {
       }
     },
 
-    // Busca (implementação futura)
+    // Adicionar método para zoom ao município
+    handleZoomToMunicipality(municipalityGeometry) {
+      if (this.$refs.mapContainer && this.$refs.mapContainer.view) {
+        const extent = {
+          type: "polygon",
+          rings: municipalityGeometry.coordinates[0]
+        }
+
+        this.$refs.mapContainer.view.goTo({
+          target: extent,
+          zoom: 9  // Zoom inicial para o município
+        })
+      }
+    },
+
+    // Busca de localização
     async performSearch() {
       if (!this.searchQuery) return
 
