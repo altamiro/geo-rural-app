@@ -29,42 +29,80 @@ export default {
   data() {
     return {
       selectedMunicipality: '',
-      municipalities: municipalitiesData.features.map(feature => ({
-        id: feature.properties.id,
-        name: feature.properties.name,
-        description: feature.properties.description,
-        geometry: feature.geometry
-      }))
+      municipalities: []
     }
+  },
+  created() {
+    // Processar os dados do GeoJSON na inicialização do componente
+    this.processGeoJSONData()
   },
   methods: {
     ...mapActions({
       setMunicipality: 'property/setMunicipality',
       addMunicipalityLayer: 'map/addMunicipalityLayer'
     }),
+
+    // Método para processar o GeoJSON e extrair os municípios
+    processGeoJSONData() {
+      try {
+        // Verificar se temos dados válidos
+        if (!municipalitiesData || !municipalitiesData.features || !Array.isArray(municipalitiesData.features)) {
+          console.error('Formato de dados de municípios inválido');
+          this.municipalities = []; // Definir um array vazio como fallback
+          return;
+        }
+
+        // Mapear as features com validação adicional
+        this.municipalities = municipalitiesData.features
+          .filter(feature => feature && feature.properties && feature.geometry)
+          .map(feature => ({
+            id: feature.properties.id || '',
+            name: feature.properties.name || 'Sem nome',
+            description: feature.properties.description || '',
+            geometry: feature.geometry
+          }));
+
+        console.log(`Carregados ${this.municipalities.length} municípios do arquivo GeoJSON`);
+      } catch (error) {
+        console.error('Erro ao processar dados GeoJSON:', error);
+        this.municipalities = [];
+      }
+    },
+
     changeMunicipality() {
-      const municipality = this.municipalities.find(m => m.id === this.selectedMunicipality)
+      const municipality = this.municipalities.find(m => m.id === this.selectedMunicipality);
 
       if (municipality) {
+        // Validar a geometria antes de prosseguir
+        if (!municipality.geometry ||
+          !municipality.geometry.type ||
+          !municipality.geometry.coordinates ||
+          !Array.isArray(municipality.geometry.coordinates) ||
+          !Array.isArray(municipality.geometry.coordinates[0])) {
+          this.$message.error(`Geometria inválida para o município ${municipality.name}`);
+          return;
+        }
+
         // Definir município no store
         this.setMunicipality({
           id: municipality.id,
           name: municipality.name
-        })
+        });
 
         // Adicionar limite do município ao mapa
-        this.addMunicipalityLayer(municipality.geometry)
+        this.addMunicipalityLayer(municipality.geometry);
 
         // Mensagem de confirmação
         this.$message({
           message: `Município selecionado: ${municipality.name}`,
           type: 'success'
-        })
+        });
 
         // Centralizar o mapa no município
-        this.$emit('zoom-to-municipality', municipality.geometry)
+        this.$emit('zoom-to-municipality', municipality.geometry);
       }
     },
+
     saveChanges() {
       // Mesma lógica anterior
       this.$confirm('Deseja salvar todas as alterações?', 'Confirmação', {
@@ -80,6 +118,7 @@ export default {
         // Usuário cancelou
       })
     },
+
     openHelp() {
       this.$alert('Sistema de Georreferenciamento de Imóveis Rurais\n\n' +
         '1. Selecione o município do imóvel\n' +

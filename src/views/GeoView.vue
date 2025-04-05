@@ -50,6 +50,8 @@
                 el-select(v-model="selectedLegalReserve" placeholder="Selecione" :disabled="!propertyDrawn" @change="onLayerTypeSelected")
                   el-option(v-for="item in legalReserveOptions" :key="item.value" :label="item.label" :value="item.value")
 
+    app-header(@zoom-to-municipality="handleZoomToMunicipality")
+
     .geo-map-container
       map-container(
         ref="mapContainer"
@@ -140,6 +142,7 @@
 </template>
 
 <script>
+import AppHeader from '@/components/common/AppHeader.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
 import DrawingTools from '@/components/map/DrawingTools.vue'
 import PropertyInfo from '@/components/map/PropertyInfo.vue'
@@ -154,6 +157,7 @@ import { LAYER_TYPES } from '@/utils/constants'
 export default {
   name: 'GeoView',
   components: {
+    AppHeader,
     MapContainer,
     DrawingTools,
     PropertyInfo,
@@ -509,16 +513,34 @@ export default {
 
     // Adicionar método para zoom ao município
     handleZoomToMunicipality(municipalityGeometry) {
-      if (this.$refs.mapContainer && this.$refs.mapContainer.view) {
-        const extent = {
-          type: "polygon",
-          rings: municipalityGeometry.coordinates[0]
-        }
+      // Adicione uma verificação para evitar chamadas recursivas
+      if (this._isZooming) return;
 
-        this.$refs.mapContainer.view.goTo({
-          target: extent,
-          zoom: 9  // Zoom inicial para o município
-        })
+      try {
+        this._isZooming = true;
+
+        if (this.$refs.mapContainer && this.$refs.mapContainer.view) {
+          // Verificar se a geometria está no formato correto
+          if (!municipalityGeometry || !municipalityGeometry.coordinates) {
+            console.error('Geometria inválida para zoom:', municipalityGeometry);
+            return;
+          }
+
+          const extent = {
+            type: "polygon",
+            rings: municipalityGeometry.coordinates[0]
+          };
+
+          this.$refs.mapContainer.view.goTo({
+            target: extent,
+            zoom: 9
+          });
+        }
+      } finally {
+        // Certifique-se de limpar a flag mesmo em caso de erro
+        setTimeout(() => {
+          this._isZooming = false;
+        }, 1000); // Adiciona um atraso para garantir que a operação termine
       }
     },
 

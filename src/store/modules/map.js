@@ -28,55 +28,88 @@ const getters = {
 const actions = {
   async addMunicipalityLayer({ state, commit }, geometry) {
     try {
-      // Se já existir uma camada de município, remover
-      if (state.municipalityLayer) {
-        state.map.remove(state.municipalityLayer)
-      }
+      // Verificação para prevenir processamento recursivo
+      if (state._processingMunicipality) return;
+      commit("SET_PROCESSING_MUNICIPALITY", true);
 
-      const [Graphic, FeatureLayer] = await loadEsriModules([
-        "esri/Graphic",
-        "esri/layers/FeatureLayer"
-      ])
+      // Adicione setTimeout para quebrar possível recursão
+      setTimeout(async () => {
+        try {
+          // Se não há geometria, retornar
+          if (!geometry || !geometry.coordinates || !Array.isArray(geometry.coordinates[0])) {
+            console.error("Geometria do município inválida:", geometry);
+            return;
+          }
 
-      // Criar símbolo para o município
-      const symbol = {
-        type: "simple-fill",
-        color: [0, 0, 255, 0.1],  // Azul transparente
-        outline: {
-          color: [0, 0, 255, 0.7],
-          width: 2
+          // Se não há mapa ou view inicializados, retornar
+          if (!state.map || !state.view) {
+            console.error("Mapa ou view não inicializados");
+            return;
+          }
+
+          // Se já existir uma camada de município, remover
+          if (state.municipalityLayer) {
+            state.map.remove(state.municipalityLayer);
+          }
+
+          const [Graphic, GraphicsLayer] = await loadEsriModules([
+            "esri/Graphic",
+            "esri/layers/GraphicsLayer",
+          ]);
+
+          // Criar camada para o município
+          const municipalityLayer = new GraphicsLayer({
+            id: "municipalityLayer",
+            title: "Limite do Município",
+          });
+
+          // Criar símbolo para o município
+          const symbol = {
+            type: "simple-fill",
+            color: [0, 0, 255, 0.1], // Azul transparente
+            outline: {
+              color: [0, 0, 255, 0.7],
+              width: 2,
+            },
+          };
+
+          // Converter a geometria do GeoJSON para formato Esri
+          // Dependendo da estrutura, você pode precisar converter o sistema de coordenadas
+          const municipalityGraphic = new Graphic({
+            geometry: {
+              type: "polygon",
+              rings: geometry.coordinates[0],
+            },
+            symbol: symbol,
+            attributes: {
+              name: "Limite do Município",
+            },
+          });
+
+          // Adicionar gráfico à camada
+          municipalityLayer.add(municipalityGraphic);
+
+          // Adicionar camada ao mapa
+          state.map.add(municipalityLayer);
+
+          // Fazer zoom para o município
+          state.view.goTo({
+            target: municipalityGraphic.geometry,
+            zoom: 10, // Ajuste o zoom conforme necessário
+          });
+
+          // Salvar referência da camada
+          commit("SET_MUNICIPALITY_LAYER", municipalityLayer);
+        } finally {
+          commit("SET_PROCESSING_MUNICIPALITY", false);
         }
-      }
-
-      // Criar geometria no formato Esri
-      const municipalityGraphic = new Graphic({
-        geometry: {
-          type: "polygon",
-          rings: geometry.coordinates[0]
-        },
-        symbol: symbol
-      })
-
-      // Criar camada de feature
-      const municipalityLayer = new FeatureLayer({
-        source: [municipalityGraphic],
-        objectIdField: "ObjectID",
-        fields: [],
-        geometryType: "polygon"
-      })
-
-      // Adicionar ao mapa
-      state.map.add(municipalityLayer)
-
-      // Zoom para o município
-      state.view.goTo(municipalityGraphic)
-
-      // Salvar referência da camada
-      commit('SET_MUNICIPALITY_LAYER', municipalityLayer)
-
+      }, 0);
+      return true;
     } catch (error) {
-      console.error("Erro ao adicionar camada de município:", error)
-      commit('SET_ERROR', "Erro ao adicionar camada de município: " + error.message)
+      commit("SET_PROCESSING_MUNICIPALITY", false);
+      console.error("Erro ao adicionar camada de município:", error);
+      commit("SET_ERROR", "Erro ao adicionar camada de município: " + error.message);
+      return false;
     }
   },
 
@@ -244,13 +277,12 @@ const actions = {
 
 // Mutations
 const mutations = {
-
   SET_MAP_INITIALIZED(state, status) {
-    state.mapInitialized = status
+    state.mapInitialized = status;
   },
 
   SET_SKETCH_VIEW_MODEL_READY(state, status) {
-    state.sketchViewModelReady = status
+    state.sketchViewModelReady = status;
   },
 
   SET_LOADING(state, loading) {
@@ -284,8 +316,13 @@ const mutations = {
   SET_SELECTED_BASEMAP(state, basemapId) {
     state.selectedBasemap = basemapId;
   },
+
   SET_MUNICIPALITY_LAYER(state, layer) {
-    state.municipalityLayer = layer
+    state.municipalityLayer = layer;
+  },
+
+  SET_PROCESSING_MUNICIPALITY(state, status) {
+    state._processingMunicipality = status;
   },
 };
 
