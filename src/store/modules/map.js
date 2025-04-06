@@ -1,6 +1,10 @@
 /* eslint-disable no-unused-vars */
-
-import { loadEsriModules, ensureArcGISLoaded } from "@/utils/esri-loader-config";
+import Map from '@arcgis/core/Map';
+import MapView from '@arcgis/core/views/MapView';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import BasemapGallery from '@arcgis/core/widgets/BasemapGallery';
+import Expand from '@arcgis/core/widgets/Expand';
+import Graphic from '@arcgis/core/Graphic';
 import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
 
 // Initial state
@@ -14,7 +18,7 @@ const state = {
   selectedBasemap: "satellite",
   mapInitialized: false,
   sketchViewModelReady: false,
-  arcgisLoaded: false,
+  arcgisLoaded: true, // Sempre true com importações locais
   loading: false,
   error: null,
 };
@@ -51,9 +55,6 @@ const actions = {
 
       commit("SET_PROCESSING_MUNICIPALITY", true);
 
-      // Garantir que a API está carregada
-      await ensureArcGISLoaded();
-
       // Importante: definir um timeout para garantir que o flag será resetado
       const safetyTimeout = setTimeout(() => {
         commit("SET_PROCESSING_MUNICIPALITY", false);
@@ -85,20 +86,6 @@ const actions = {
         // Se já existir uma camada de município, remover
         if (state.municipalityLayer) {
           state.map.remove(state.municipalityLayer);
-        }
-
-        // Carregar módulos de forma segura
-        let Graphic, GraphicsLayer;
-        try {
-          [Graphic, GraphicsLayer] = await loadEsriModules([
-            "esri/Graphic",
-            "esri/layers/GraphicsLayer",
-          ]);
-        } catch (loadError) {
-          console.error("Erro ao carregar módulos ArcGIS", loadError);
-          clearTimeout(safetyTimeout);
-          commit("SET_PROCESSING_MUNICIPALITY", false);
-          return false;
         }
 
         // Criar camada para o município
@@ -212,15 +199,6 @@ const actions = {
     try {
       commit("SET_LOADING", true);
 
-      // Load required modules
-      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadEsriModules([
-        "esri/Map",
-        "esri/views/MapView",
-        "esri/layers/GraphicsLayer",
-        "esri/widgets/BasemapGallery",
-        "esri/widgets/Expand",
-      ]);
-
       // Create graphics layer
       const graphicsLayer = new GraphicsLayer();
 
@@ -258,6 +236,7 @@ const actions = {
       commit("SET_BASEMAP_GALLERY", basemapGallery);
       commit("SET_GRAPHICS_LAYER", graphicsLayer);
 
+      commit("SET_MAP_INITIALIZED", true);
       commit("SET_LOADING", false);
       return { map, view, graphicsLayer };
     } catch (error) {
@@ -284,14 +263,6 @@ const actions = {
 
     // Log para debug
     console.log("SketchViewModel armazenado no Vuex com sucesso");
-  },
-
-  /**
-   * Inicializa o estado do mapa
-   * @param {Object} context - Vuex context
-   */
-  setMapInitialized({ commit }) {
-    commit("SET_MAP_INITIALIZED", true);
   },
 
   /**
@@ -417,7 +388,7 @@ const mutations = {
 
   SET_ARCGIS_LOADED(state, status) {
     state.arcgisLoaded = status;
-  },
+  }
 };
 
 export default {

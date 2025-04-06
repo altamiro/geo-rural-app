@@ -1,9 +1,9 @@
 /**
  * Serviço para cálculos de áreas e análises espaciais
  */
-import { loadEsriModules } from "@/utils/esri-loader-config";
-import { squareMetersToHectares } from '@/utils/geometry'
-import { GEOMETRY_TOLERANCE } from '@/utils/constants'
+import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import { squareMetersToHectares } from '@/utils/geometry';
+import { GEOMETRY_TOLERANCE } from '@/utils/constants';
 
 class CalculationService {
   /**
@@ -14,20 +14,18 @@ class CalculationService {
   async calculateArea(geometry) {
     try {
       if (!geometry) {
-        console.warn("Geometria não definida para cálculo de área")
-        return 0
+        console.warn("Geometria não definida para cálculo de área");
+        return 0;
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
-
       // Calcular área em metros quadrados
-      const areaInSqMeters = geometryEngine.geodesicArea(geometry, "square-meters")
+      const areaInSqMeters = geometryEngine.geodesicArea(geometry, "square-meters");
 
       // Converter para hectares
-      return squareMetersToHectares(areaInSqMeters)
+      return squareMetersToHectares(areaInSqMeters);
     } catch (error) {
-      console.error("Erro ao calcular área:", error)
-      return 0
+      console.error("Erro ao calcular área:", error);
+      return 0;
     }
   }
 
@@ -38,10 +36,10 @@ class CalculationService {
    * @returns {Number} - Área líquida
    */
   calculateNetArea(propertyArea, administrativeArea) {
-    if (!propertyArea || propertyArea <= 0) return 0
-    if (!administrativeArea) administrativeArea = 0
+    if (!propertyArea || propertyArea <= 0) return 0;
+    if (!administrativeArea) administrativeArea = 0;
 
-    return Math.max(0, propertyArea - administrativeArea)
+    return Math.max(0, propertyArea - administrativeArea);
   }
 
   /**
@@ -51,10 +49,10 @@ class CalculationService {
    * @returns {Number} - Percentual (0-100)
    */
   calculatePercentage(value, total) {
-    if (!total || total <= 0) return 0
-    if (!value || value < 0) value = 0
+    if (!total || total <= 0) return 0;
+    if (!value || value < 0) value = 0;
 
-    return (value / total) * 100
+    return (value / total) * 100;
   }
 
   /**
@@ -70,38 +68,36 @@ class CalculationService {
           geometry: null,
           area: 0,
           hasOverlap: false
-        }
+        };
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
-
       // Calcular interseção
-      const intersectGeometry = geometryEngine.intersect(geometry1, geometry2, GEOMETRY_TOLERANCE)
+      const intersectGeometry = geometryEngine.intersect(geometry1, geometry2, GEOMETRY_TOLERANCE);
 
       if (!intersectGeometry) {
         return {
           geometry: null,
           area: 0,
           hasOverlap: false
-        }
+        };
       }
 
       // Calcular área de sobreposição
-      const areaInSqMeters = geometryEngine.geodesicArea(intersectGeometry, "square-meters")
-      const area = squareMetersToHectares(areaInSqMeters)
+      const areaInSqMeters = geometryEngine.geodesicArea(intersectGeometry, "square-meters");
+      const area = squareMetersToHectares(areaInSqMeters);
 
       return {
         geometry: intersectGeometry,
         area,
         hasOverlap: area > 0
-      }
+      };
     } catch (error) {
-      console.error("Erro ao calcular sobreposição:", error)
+      console.error("Erro ao calcular sobreposição:", error);
       return {
         geometry: null,
         area: 0,
         hasOverlap: false
-      }
+      };
     }
   }
 
@@ -119,35 +115,32 @@ class CalculationService {
           coveredArea: 0,
           uncoveredArea: 0,
           coveragePercentage: 0
-        }
+        };
       }
 
       // Se não tem geometrias de cobertura, retorna 0%
       if (!coverageGeometries || !Array.isArray(coverageGeometries) || coverageGeometries.length === 0) {
-        const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
-        const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters")
-        const baseArea = squareMetersToHectares(baseAreaInSqMeters)
+        const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters");
+        const baseArea = squareMetersToHectares(baseAreaInSqMeters);
 
         return {
           coverageGeometry: null,
           coveredArea: 0,
           uncoveredArea: baseArea,
           coveragePercentage: 0
-        }
+        };
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
-
       // União de todas as geometrias de cobertura
-      let unionGeometry = null
+      let unionGeometry = null;
 
       for (const geometry of coverageGeometries) {
-        if (!geometry) continue
+        if (!geometry) continue;
 
         if (!unionGeometry) {
-          unionGeometry = geometry
+          unionGeometry = geometry;
         } else {
-          unionGeometry = geometryEngine.union([unionGeometry, geometry], GEOMETRY_TOLERANCE)
+          unionGeometry = geometryEngine.union([unionGeometry, geometry], GEOMETRY_TOLERANCE);
         }
       }
 
@@ -157,14 +150,14 @@ class CalculationService {
           coveredArea: 0,
           uncoveredArea: 0,
           coveragePercentage: 0
-        }
+        };
       }
 
       // Calcular área da base em metros quadrados
-      const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters")
+      const baseAreaInSqMeters = geometryEngine.geodesicArea(baseGeometry, "square-meters");
 
       // Calcular área de interseção (cobertura real)
-      const intersectionGeometry = geometryEngine.intersect(unionGeometry, baseGeometry, GEOMETRY_TOLERANCE)
+      const intersectionGeometry = geometryEngine.intersect(unionGeometry, baseGeometry, GEOMETRY_TOLERANCE);
 
       if (!intersectionGeometry) {
         return {
@@ -172,36 +165,36 @@ class CalculationService {
           coveredArea: 0,
           uncoveredArea: squareMetersToHectares(baseAreaInSqMeters),
           coveragePercentage: 0
-        }
+        };
       }
 
       // Calcular área coberta em metros quadrados
-      const coveredAreaInSqMeters = geometryEngine.geodesicArea(intersectionGeometry, "square-meters")
+      const coveredAreaInSqMeters = geometryEngine.geodesicArea(intersectionGeometry, "square-meters");
 
       // Converter para hectares
-      const coveredArea = squareMetersToHectares(coveredAreaInSqMeters)
-      const baseArea = squareMetersToHectares(baseAreaInSqMeters)
+      const coveredArea = squareMetersToHectares(coveredAreaInSqMeters);
+      const baseArea = squareMetersToHectares(baseAreaInSqMeters);
 
       // Calcular área não coberta
-      const uncoveredArea = baseArea - coveredArea
+      const uncoveredArea = baseArea - coveredArea;
 
       // Calcular porcentagem de cobertura
-      const coveragePercentage = this.calculatePercentage(coveredAreaInSqMeters, baseAreaInSqMeters)
+      const coveragePercentage = this.calculatePercentage(coveredAreaInSqMeters, baseAreaInSqMeters);
 
       return {
         coverageGeometry: intersectionGeometry,
         coveredArea,
         uncoveredArea,
         coveragePercentage
-      }
+      };
     } catch (error) {
-      console.error("Erro ao calcular cobertura:", error)
+      console.error("Erro ao calcular cobertura:", error);
       return {
         coverageGeometry: null,
         coveredArea: 0,
         uncoveredArea: 0,
         coveragePercentage: 0
-      }
+      };
     }
   }
 
@@ -213,17 +206,16 @@ class CalculationService {
    */
   async doGeometriesOverlap(geometry1, geometry2) {
     try {
-      if (!geometry1 || !geometry2) return false
+      if (!geometry1 || !geometry2) return false;
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"])
       return geometryEngine.overlaps(geometry1, geometry2) ||
              geometryEngine.contains(geometry1, geometry2) ||
-             geometryEngine.contains(geometry2, geometry1)
+             geometryEngine.contains(geometry2, geometry1);
     } catch (error) {
-      console.error("Erro ao verificar sobreposição:", error)
-      return false
+      console.error("Erro ao verificar sobreposição:", error);
+      return false;
     }
   }
 }
 
-export default new CalculationService()
+export default new CalculationService();

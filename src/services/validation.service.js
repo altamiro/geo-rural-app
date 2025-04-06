@@ -1,7 +1,7 @@
 /**
  * Service for validating layer geometries based on business rules
  */
-import { loadEsriModules } from "@/utils/esri-loader-config";
+import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import { MESSAGES, GEOMETRY_TOLERANCE } from "@/utils/constants";
 import { squareMetersToHectares } from "@/utils/geometry";
 import { isCompleteCoverage } from "@/utils/validation";
@@ -43,8 +43,6 @@ class ValidationService {
 
       // Se temos a geometria do município, verificar se a propriedade está dentro dele
       if (municipalityGeometry) {
-        const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
-
         // Verificar se a propriedade está dentro do município, com uma pequena tolerância
         const isWithin = geometryEngine.within(
           propertyGeometry,
@@ -112,8 +110,6 @@ class ValidationService {
         };
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
-
       // Check if headquarters is within property, using tolerance for better precision
       const isWithinProperty = geometryEngine.within(
         headquartersGeometry,
@@ -175,8 +171,6 @@ class ValidationService {
         };
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
-
       // Check if layer is within property, using tolerance for better precision
       const intersection = geometryEngine.intersect(
         layerGeometry,
@@ -237,8 +231,6 @@ class ValidationService {
           message: "Nenhuma camada foi encontrada.",
         };
       }
-
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
 
       // Filter out null geometries
       const validGeometries = layerGeometries.filter((geom) => geom);
@@ -343,15 +335,12 @@ class ValidationService {
 
       if (!layerGeometries || Object.keys(layerGeometries).length === 0) {
         // Se não há camadas, toda a área é considerada antropizada
-        const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
         const areaInSqMeters = geometryEngine.geodesicArea(propertyGeometry, "square-meters");
         return {
           area: squareMetersToHectares(areaInSqMeters),
           geometry: propertyGeometry,
         };
       }
-
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
 
       // Get all geometries except property
       const otherGeometries = Object.entries(layerGeometries)

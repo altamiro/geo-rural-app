@@ -1,5 +1,6 @@
 const { defineConfig } = require('@vue/cli-service');
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = defineConfig({
   transpileDependencies: true,
@@ -45,7 +46,18 @@ module.exports = defineConfig({
           }
         }
       }
-    }
+    },
+    // Adicionar plugin para copiar assets do ArcGIS
+    plugins: [
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: path.resolve(__dirname, 'node_modules/@arcgis/core/assets'),
+            to: 'assets'
+          }
+        ]
+      })
+    ]
   },
   chainWebpack: config => {
     // Add pug loader

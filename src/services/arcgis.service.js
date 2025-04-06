@@ -1,9 +1,22 @@
 /**
  * Serviço para funções específicas do ArcGIS Maps SDK
- * Centraliza o carregamento de módulos e funções comuns
+ * Centraliza as funções comuns usando importações locais
  */
-import { loadEsriModules, ensureArcGISLoaded } from "@/utils/esri-loader-config";
 import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
+
+// Importações diretas dos módulos necessários
+import Map from "@arcgis/core/Map";
+import MapView from "@arcgis/core/views/MapView";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
+import Expand from "@arcgis/core/widgets/Expand";
+import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
+import Graphic from "@arcgis/core/Graphic";
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+import Locator from "@arcgis/core/tasks/Locator";
+import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 
 class ArcGISService {
   /**
@@ -13,22 +26,6 @@ class ArcGISService {
    */
   async initializeMap(containerId) {
     try {
-      // Garantir que a API está carregada antes de prosseguir
-      await ensureArcGISLoaded();
-
-      const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadEsriModules([
-        "esri/Map",
-        "esri/views/MapView",
-        "esri/layers/GraphicsLayer",
-        "esri/widgets/BasemapGallery",
-        "esri/widgets/Expand",
-      ]);
-
-      // Verificar se todos os módulos foram carregados
-      if (!Map || !MapView || !GraphicsLayer) {
-        throw new Error("Falha ao carregar módulos essenciais do ArcGIS");
-      }
-
       // Verificar se o container existe
       const container = document.getElementById(containerId);
       if (!container) {
@@ -96,7 +93,6 @@ class ArcGISService {
    * @param {Object} layer - Camada para desenho
    * @returns {Promise<Object>} - Modelo de desenho inicializado
    */
-  // Modificar em src/services/arcgis.service.js
   async initializeSketchViewModel(view, layer) {
     // Adicionar proteção contra chamadas com parâmetros inválidos
     if (!view || !layer) {
@@ -105,15 +101,6 @@ class ArcGISService {
     }
 
     try {
-      // Verificar se os objetos Esri já existem para evitar recarregá-los
-      const SketchViewModel =
-        window.esri?.widgets?.SketchViewModel ||
-        (await loadEsriModules(["esri/widgets/Sketch/SketchViewModel"]))[0];
-
-      if (!SketchViewModel) {
-        throw new Error("Não foi possível carregar o módulo SketchViewModel");
-      }
-
       // Verificar se a view foi inicializada
       if (!view.ready) {
         await view.when();
@@ -153,8 +140,6 @@ class ArcGISService {
         throw new Error("Geometria não definida para createGraphic");
       }
 
-      const [Graphic] = await loadEsriModules(["esri/Graphic"]);
-
       return new Graphic({
         geometry,
         symbol,
@@ -183,12 +168,12 @@ class ArcGISService {
         color = [128, 128, 128, 0.5];
       }
 
-      let symbolModule;
+      let Symbol;
       let symbolOptions = {};
 
       switch (type) {
         case "point":
-          symbolModule = "esri/symbols/SimpleMarkerSymbol";
+          Symbol = SimpleMarkerSymbol;
           symbolOptions = {
             style: "circle",
             color: color,
@@ -201,7 +186,7 @@ class ArcGISService {
           break;
 
         case "polyline":
-          symbolModule = "esri/symbols/SimpleLineSymbol";
+          Symbol = SimpleLineSymbol;
           symbolOptions = {
             color: color,
             width: 2,
@@ -209,7 +194,7 @@ class ArcGISService {
           break;
 
         case "polygon":
-          symbolModule = "esri/symbols/SimpleFillSymbol";
+          Symbol = SimpleFillSymbol;
           symbolOptions = {
             color: color,
             outline: {
@@ -223,7 +208,6 @@ class ArcGISService {
           throw new Error(`Tipo de símbolo não suportado: ${type}`);
       }
 
-      const [Symbol] = await loadEsriModules([symbolModule]);
       return new Symbol(symbolOptions);
     } catch (error) {
       console.error(`Erro ao criar símbolo ${type}:`, error);
@@ -243,7 +227,6 @@ class ArcGISService {
         throw new Error("Ponto ou polígono não definidos");
       }
 
-      const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
       return geometryEngine.contains(polygon, point);
     } catch (error) {
       console.error("Erro ao verificar ponto no polígono:", error);
@@ -261,8 +244,6 @@ class ArcGISService {
       if (!searchText) {
         return [];
       }
-
-      const [Locator] = await loadEsriModules(["esri/tasks/Locator"]);
 
       const locator = new Locator({
         url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",

@@ -1,8 +1,8 @@
-import { loadEsriModules } from "@/utils/esri-loader-config";
-
 /**
  * Utilitários para manipulação de geometrias
  */
+import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as jsonUtils from '@arcgis/core/geometry/support/jsonUtils';
 
 /**
  * Converte área de metros quadrados para hectares
@@ -40,7 +40,6 @@ export async function simplifyGeometry(geometry, tolerance = 10) {
       throw new Error("Geometria não definida para simplificação");
     }
 
-    const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
     return geometryEngine.simplify(geometry, tolerance);
   } catch (error) {
     console.error("Erro ao simplificar geometria:", error);
@@ -59,7 +58,6 @@ export async function geometryToGeoJSON(geometry) {
       throw new Error("Geometria não definida para conversão");
     }
 
-    const [jsonUtils] = await loadEsriModules(["esri/geometry/support/jsonUtils"]);
     return jsonUtils.geometryToJSON(geometry);
   } catch (error) {
     console.error("Erro ao converter geometria para GeoJSON:", error);
@@ -78,7 +76,6 @@ export async function geoJSONToGeometry(geoJSON) {
       throw new Error("GeoJSON não definido para conversão");
     }
 
-    const [jsonUtils] = await loadEsriModules(["esri/geometry/support/jsonUtils"]);
     return jsonUtils.fromJSON(geoJSON);
   } catch (error) {
     console.error("Erro ao converter GeoJSON para geometria:", error);
@@ -97,7 +94,6 @@ export async function calculateCentroid(geometry) {
       throw new Error("Geometria não definida para cálculo de centróide");
     }
 
-    const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
     return geometryEngine.centroid(geometry);
   } catch (error) {
     console.error("Erro ao calcular centróide:", error);
@@ -128,7 +124,6 @@ export async function combineGeometries(geometries) {
       return validGeometries[0];
     }
 
-    const [geometryEngine] = await loadEsriModules(["esri/geometry/geometryEngine"]);
     return geometryEngine.union(validGeometries);
   } catch (error) {
     console.error("Erro ao combinar geometrias:", error);

@@ -34,7 +34,9 @@
 </template>
 
 <script>
-import { mapActions, mapState } from 'vuex'
+import { mapActions } from 'vuex'
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel'
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 
 export default {
   name: 'DrawingTools',
@@ -51,24 +53,65 @@ export default {
   },
   data() {
     return {
-      activeTool: null
+      activeTool: null,
+      sketchViewModel: null,
+      view: null
     }
   },
   computed: {
-    ...mapState({
-      sketchViewModel: state => state.map.sketchViewModel,
-      view: state => state.map.view
-    }),
     isLayerSelected() {
       return !!this.selectedLayer
     }
+  },
+  mounted() {
+    this.initializeSketchViewModel()
   },
   methods: {
     ...mapActions({
       deleteLayer: 'layers/deleteLayer'
     }),
-    activateTool(tool) {
+    initializeSketchViewModel() {
+      // Verificar se mapa e ferramentas estão prontos
+      if (!this.mapReady() || !this.sketchReady()) {
+        return
+      }
 
+      try {
+        // Create a graphics layer to use with SketchViewModel
+        const graphicsLayer = new GraphicsLayer()
+
+        // Get the map view
+        this.view = this.$store.state.map.view
+
+        // Add the graphics layer to the map
+        this.view.map.add(graphicsLayer)
+
+        // Create SketchViewModel
+        this.sketchViewModel = new SketchViewModel({
+          view: this.view,
+          layer: graphicsLayer
+        })
+
+        // Add event listeners for sketch events if needed
+        this.sketchViewModel.on('create', (event) => {
+          if (event.state === 'complete') {
+            // Handle creation of graphic
+            console.log('Graphic created:', event.graphic)
+          }
+        })
+
+        this.sketchViewModel.on('update', (event) => {
+          if (event.state === 'complete') {
+            // Handle updating of graphic
+            console.log('Graphic updated:', event.graphics)
+          }
+        })
+      } catch (error) {
+        console.error("Erro ao inicializar SketchViewModel:", error)
+        this.$message.error(`Erro ao inicializar ferramentas de desenho: ${error.message}`)
+      }
+    },
+    activateTool(tool) {
       // Verificar se mapa e ferramentas estão prontos
       if (!this.mapReady() || !this.sketchReady()) {
         this.$message.warning('As ferramentas de desenho ainda não estão prontas. Aguarde um momento.');

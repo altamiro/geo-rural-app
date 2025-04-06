@@ -35,8 +35,14 @@ import { isValidCoordinate } from '@/utils/validation'
 import { LAYER_TYPES, MESSAGES, GEOMETRY_TYPES } from '@/utils/constants'
 import ArcGISService from '@/services/arcgis.service'
 import CalculationService from '@/services/calculation.service'
-import { ensureArcGISLoaded } from '@/utils/esri-loader-config';
 
+// Importações diretas do ArcGIS
+import Map from '@arcgis/core/Map'
+import MapView from '@arcgis/core/views/MapView'
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
+import Point from '@arcgis/core/geometry/Point'
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel'
+import * as geometryEngine from '@arcgis/core/geometry/geometryEngine'
 
 export default {
   name: 'MapContainer',
@@ -65,7 +71,7 @@ export default {
     })
   },
   mounted() {
-    this.initializeMapSafely()
+    this.initializeMap()
   },
   methods: {
     ...mapMutations({
@@ -78,38 +84,16 @@ export default {
       storeSketchViewModel: 'map/SET_SKETCH_VIEW_MODEL'
     }),
 
-    async initializeMapSafely() {
-      // Evitar inicializações múltiplas
-      if (this._initializing) {
-        console.log("Inicialização já em andamento, ignorando chamada duplicada");
-        return;
-      }
-
-      this._initializing = true;
-
-      try {
-        // Adicionar timeout para garantir que não ficaremos presos
-        const arcgisPromise = ensureArcGISLoaded();
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Timeout esperando ArcGIS API")), 30000);
-        });
-
-        // Usar Promise.race para evitar ficar preso
-        await Promise.race([arcgisPromise, timeoutPromise]);
-
-        console.log("ArcGIS carregado, inicializando mapa...");
-        await this.initializeMap();
-
-        this._initializing = false;
-      } catch (error) {
-        this._initializing = false;
-        console.error("Falha ao garantir que ArcGIS está carregado:", error);
-        this.$message.error("Não foi possível carregar os recursos de mapa. Tente recarregar a página.");
-      }
-    },
-
     async initializeMap() {
       try {
+        // Evitar inicializações múltiplas
+        if (this._initializing) {
+          console.log("Inicialização já em andamento, ignorando chamada duplicada");
+          return;
+        }
+
+        this._initializing = true;
+
         // Verificar se o elemento mapView existe no DOM
         const mapViewElement = document.getElementById('mapView');
         if (!mapViewElement) {
@@ -175,8 +159,10 @@ export default {
           this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.");
         }
 
+        this._initializing = false;
         return { map: this.map, view: this.view, graphicsLayer: this.graphicsLayer };
       } catch (error) {
+        this._initializing = false;
         console.error("Erro ao inicializar mapa:", error);
         this.$emit('map-error', error.message);
         this.$message.error("Não foi possível inicializar o mapa. Detalhes: " + error.message);
