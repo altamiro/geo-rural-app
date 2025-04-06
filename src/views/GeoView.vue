@@ -161,7 +161,7 @@ import LayerList from '@/components/sidebar/LayerList.vue'
 import LayerDetails from '@/components/sidebar/LayerDetails.vue'
 import ValidationPanel from '@/components/sidebar/ValidationPanel.vue'
 import { mapState, mapGetters, mapActions } from 'vuex'
-import { loadEsriModules } from "@/utils/esri-loader-config";
+import { loadEsriModules } from "@/utils/arcgis-loader";
 import { LAYER_TYPES } from '@/utils/constants'
 
 export default {

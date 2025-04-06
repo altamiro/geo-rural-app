@@ -1,5 +1,5 @@
 import ValidationService from '@/services/validation.service'
-import { loadEsriModules } from "@/utils/esri-loader-config";
+import { loadEsriModules } from "@/utils/arcgis-loader";
 import { LAYER_TYPES, LAYER_CATEGORIES, LAYER_SYMBOLOGY, MESSAGES } from '@/utils/constants'
 import { squareMetersToHectares } from '@/utils/geometry'
 
