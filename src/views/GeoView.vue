@@ -1,6 +1,6 @@
 <template lang="pug">
   .geo-view
-  .map-loading-overlay(v-if="!mapInitialized || !sketchViewModelReady")
+    .map-loading-overlay(v-if="!mapInitialized || !sketchViewModelReady")
       .loading-spinner
         i.el-icon-loading
       .loading-text {{ loadingMessage }}
