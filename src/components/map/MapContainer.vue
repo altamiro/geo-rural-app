@@ -35,6 +35,8 @@ import { isValidCoordinate } from '@/utils/validation'
 import { LAYER_TYPES, MESSAGES, GEOMETRY_TYPES } from '@/utils/constants'
 import ArcGISService from '@/services/arcgis.service'
 import CalculationService from '@/services/calculation.service'
+import { ensureArcGISLoaded } from '@/utils/esri-loader-config';
+
 
 export default {
   name: 'MapContainer',
@@ -63,7 +65,7 @@ export default {
     })
   },
   mounted() {
-    this.initializeMap()
+    this.initializeMapSafely()
   },
   methods: {
     ...mapMutations({
@@ -75,7 +77,20 @@ export default {
       calculateAreas: 'property/calculateAreas',
       storeSketchViewModel: 'map/SET_SKETCH_VIEW_MODEL'
     }),
-    // Modificar em src/components/map/MapContainer.vue
+
+    async initializeMapSafely() {
+      try {
+        // Garantir que a API ArcGIS esteja carregada antes de inicializar o mapa
+        await ensureArcGISLoaded();
+
+        // Continuar com a inicialização do mapa
+        this.initializeMap();
+      } catch (error) {
+        console.error("Falha ao garantir que ArcGIS está carregado:", error);
+        this.$message.error("Não foi possível carregar os recursos de mapa. Tente recarregar a página.");
+      }
+    },
+
     async initializeMap() {
       try {
         // Usar o serviço para inicializar o mapa

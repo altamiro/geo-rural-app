@@ -1,21 +1,22 @@
 // Crie ou modifique um arquivo em src/utils/esri-loader-config.js
 
-import { loadModules, setDefaultOptions } from 'esri-loader';
+import { loadModules, setDefaultOptions } from "esri-loader";
 
 // Configurar opções padrão para o carregamento da API ArcGIS
 setDefaultOptions({
-  version: '4.24', // Versão específica do ArcGIS JS API
-  css: true,       // Carregar o CSS automaticamente
-  url: 'https://js.arcgis.com/4.24/', // URL específica para evitar redirecionamentos
+  version: "4.24", // Versão específica do ArcGIS JS API
+  css: true, // Carregar o CSS automaticamente
+  url: "https://js.arcgis.com/4.24/", // URL específica para evitar redirecionamentos
   dojoConfig: {
     async: true,
     packages: [
       {
         name: "app",
-        location: window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/app'
-      }
-    ]
-  }
+        location:
+          window.location.pathname.substring(0, window.location.pathname.lastIndexOf("/")) + "/app",
+      },
+    ],
+  },
 });
 
 /**
@@ -27,19 +28,19 @@ setDefaultOptions({
 export async function loadEsriModules(modules, options = {}) {
   try {
     if (!modules || !Array.isArray(modules) || modules.length === 0) {
-      throw new Error('Nenhum módulo ArcGIS especificado para carregamento');
+      throw new Error("Nenhum módulo ArcGIS especificado para carregamento");
     }
 
     // Tenta carregar os módulos da API ArcGIS com tratamento de erros detalhado
     return await loadModules(modules, options);
   } catch (error) {
-    console.error(`Erro ao carregar módulos ArcGIS [${modules.join(', ')}]:`, error);
+    console.error(`Erro ao carregar módulos ArcGIS [${modules.join(", ")}]:`, error);
 
     // Tentar identificar problemas específicos
-    if (error.message && error.message.includes('timeout')) {
-      console.error('Erro de timeout. Verifique a conexão de rede ou bloqueadores de script.');
-    } else if (error.message && error.message.includes('undefined dojo')) {
-      console.error('Erro no carregamento do Dojo. Verifique a URL da API ArcGIS.');
+    if (error.message && error.message.includes("timeout")) {
+      console.error("Erro de timeout. Verifique a conexão de rede ou bloqueadores de script.");
+    } else if (error.message && error.message.includes("undefined dojo")) {
+      console.error("Erro no carregamento do Dojo. Verifique a URL da API ArcGIS.");
     }
 
     throw error;
@@ -52,4 +53,33 @@ export { loadModules };
 // Exportar uma função utilitária para verificar se a API ArcGIS está carregada
 export function isArcGISLoaded() {
   return window.require !== undefined && window.esri !== undefined;
+}
+
+export function ensureArcGISLoaded() {
+  return new Promise((resolve, reject) => {
+    // Verificar se já está carregado
+    if (isArcGISLoaded()) {
+      resolve(true);
+      return;
+    }
+
+    // Definir timeout para falha
+    const timeoutId = setTimeout(() => {
+      reject(new Error("Timeout ao carregar ArcGIS API"));
+    }, 20000); // 20 segundos de timeout
+
+    // Adicionar script
+    const script = document.createElement("script");
+    script.src = "https://js.arcgis.com/4.24/";
+    script.onload = () => {
+      clearTimeout(timeoutId);
+      resolve(true);
+    };
+    script.onerror = (error) => {
+      clearTimeout(timeoutId);
+      reject(error || new Error("Falha ao carregar API ArcGIS"));
+    };
+
+    document.head.appendChild(script);
+  });
 }

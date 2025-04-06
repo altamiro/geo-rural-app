@@ -28,14 +28,31 @@ export default {
     }
   },
   mounted() {
-    // Verificar se todos os recursos críticos foram carregados
-    Promise.all([
-      // Verificações de recursos
-      this.checkStylesLoaded(),
-      this.checkScriptsLoaded()
-    ]).then(() => {
-      this.isLoading = false;
-    });
+    // Abordagem simplificada que não depende de funções inexistentes
+    this.checkAppReady();
+  },
+  methods: {
+    checkAppReady() {
+      // Verificar se os estilos estão carregados
+      const styleSheets = document.styleSheets;
+      let stylesLoaded = false;
+
+      // Verificar se pelo menos algumas folhas de estilo foram carregadas
+      if (styleSheets && styleSheets.length > 0) {
+        stylesLoaded = true;
+      }
+
+      // Verificar se o elemento UI está pronto
+      const appElement = document.getElementById('app');
+      const isAppReady = appElement && stylesLoaded;
+
+      if (isAppReady) {
+        this.isLoading = false;
+      } else {
+        // Tentar novamente em um curto período
+        setTimeout(() => this.checkAppReady(), 100);
+      }
+    }
   }
 }
 </script>

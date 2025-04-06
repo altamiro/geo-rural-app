@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 
-import { loadEsriModules } from "@/utils/esri-loader-config";
+import { loadEsriModules, ensureArcGISLoaded } from "@/utils/esri-loader-config";
 import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
 
 // Initial state
@@ -28,100 +28,162 @@ const getters = {
 const actions = {
   async addMunicipalityLayer({ state, commit }, geometry) {
     try {
-      // Verificação para prevenir processamento recursivo
-      if (state._processingMunicipality) return;
+      // Verificar se já está processando para evitar recursão
+      if (state._processingMunicipality) {
+        console.log("Já está processando município, ignorando chamada");
+        return false;
+      }
+
       commit("SET_PROCESSING_MUNICIPALITY", true);
 
-      // Adicione um timeout de segurança em caso de falha
-      const timeoutId = setTimeout(() => {
+      // Garantir que a API está carregada
+      await ensureArcGISLoaded();
+
+      // Importante: definir um timeout para garantir que o flag será resetado
+      const safetyTimeout = setTimeout(() => {
         commit("SET_PROCESSING_MUNICIPALITY", false);
-      }, 10000); // 10 segundos
+      }, 5000);
 
-      // Adicione setTimeout para quebrar possível recursão
-      setTimeout(async () => {
+      try {
+        // Validar a geometria antes de qualquer processamento
+        if (
+          !geometry ||
+          !geometry.coordinates ||
+          !Array.isArray(geometry.coordinates) ||
+          geometry.coordinates.length === 0 ||
+          !Array.isArray(geometry.coordinates[0])
+        ) {
+          console.error("Geometria do município inválida", geometry);
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
+        }
+
+        // Se não há mapa ou view inicializados, retornar
+        if (!state.map || !state.view) {
+          console.error("Mapa ou view não inicializados");
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
+        }
+
+        // Se já existir uma camada de município, remover
+        if (state.municipalityLayer) {
+          state.map.remove(state.municipalityLayer);
+        }
+
+        // Carregar módulos de forma segura
+        let Graphic, GraphicsLayer;
         try {
-          // Se não há geometria, retornar
-          if (
-            !geometry ||
-            !geometry.coordinates ||
-            !Array.isArray(geometry.coordinates) ||
-            !Array.isArray(geometry.coordinates[0])
-          ) {
-            console.error("Geometria do município inválida");
-            clearTimeout(timeoutId);
-            commit("SET_PROCESSING_MUNICIPALITY", false);
-            return;
-          }
-
-          // Se não há mapa ou view inicializados, retornar
-          if (!state.map || !state.view) {
-            console.error("Mapa ou view não inicializados");
-            return;
-          }
-
-          // Se já existir uma camada de município, remover
-          if (state.municipalityLayer) {
-            state.map.remove(state.municipalityLayer);
-          }
-
-          const [Graphic, GraphicsLayer] = await loadEsriModules([
+          [Graphic, GraphicsLayer] = await loadEsriModules([
             "esri/Graphic",
             "esri/layers/GraphicsLayer",
           ]);
+        } catch (loadError) {
+          console.error("Erro ao carregar módulos ArcGIS", loadError);
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
+        }
 
-          // Criar camada para o município
-          const municipalityLayer = new GraphicsLayer({
-            id: "municipalityLayer",
-            title: "Limite do Município",
-          });
+        // Criar camada para o município
+        const municipalityLayer = new GraphicsLayer({
+          id: "municipalityLayer",
+          title: "Limite do Município",
+        });
 
-          // Criar símbolo para o município
-          const symbol = {
-            type: "simple-fill",
-            color: [0, 0, 255, 0.1], // Azul transparente
-            outline: {
-              color: [0, 0, 255, 0.7],
-              width: 2,
-            },
-          };
+        // Criar símbolo para o município
+        const symbol = {
+          type: "simple-fill",
+          color: [0, 0, 255, 0.1],
+          outline: {
+            color: [0, 0, 255, 0.7],
+            width: 2,
+          },
+        };
 
-          // Converter a geometria do GeoJSON para formato Esri
-          // Dependendo da estrutura, você pode precisar converter o sistema de coordenadas
-          const municipalityGraphic = new Graphic({
+        // Converter coordenadas de forma segura
+        let rings;
+        try {
+          // Certifique-se de que estamos trabalhando com um array de coordenadas válido
+          rings = Array.isArray(geometry.coordinates[0]) ? geometry.coordinates[0] : [];
+
+          // Verificar se as coordenadas são válidas (pelo menos 3 pontos para um polígono)
+          if (rings.length < 3) {
+            throw new Error("Número insuficiente de coordenadas para formar um polígono");
+          }
+        } catch (error) {
+          console.error("Erro ao processar coordenadas", error);
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
+        }
+
+        // Criar o graphic com verificação de erros
+        let municipalityGraphic;
+        try {
+          municipalityGraphic = new Graphic({
             geometry: {
               type: "polygon",
-              rings: geometry.coordinates[0],
+              rings: rings,
             },
             symbol: symbol,
             attributes: {
               name: "Limite do Município",
             },
           });
+        } catch (graphicError) {
+          console.error("Erro ao criar gráfico do município", graphicError);
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
+        }
 
-          // Adicionar gráfico à camada
+        // Adicionar gráfico à camada
+        try {
           municipalityLayer.add(municipalityGraphic);
 
           // Adicionar camada ao mapa
           state.map.add(municipalityLayer);
 
-          // Fazer zoom para o município
-          state.view.goTo({
-            target: municipalityGraphic.geometry,
-            zoom: 10, // Ajuste o zoom conforme necessário
-          });
+          // Fazer zoom para o município com timeout para segurança
+          try {
+            state.view.goTo(
+              {
+                target: municipalityGraphic.geometry,
+                zoom: 10,
+              },
+              {
+                duration: 1000,
+                easing: "ease-in-out",
+              }
+            );
+          } catch (zoomError) {
+            console.warn("Erro ao fazer zoom para município", zoomError);
+            // Continuar mesmo com erro de zoom
+          }
 
           // Salvar referência da camada
           commit("SET_MUNICIPALITY_LAYER", municipalityLayer);
-        } finally {
-          clearTimeout(timeoutId);
+
+          clearTimeout(safetyTimeout);
           commit("SET_PROCESSING_MUNICIPALITY", false);
+          return true;
+        } catch (finalError) {
+          console.error("Erro ao adicionar camada ao mapa", finalError);
+          clearTimeout(safetyTimeout);
+          commit("SET_PROCESSING_MUNICIPALITY", false);
+          return false;
         }
-      }, 0);
-      return true;
-    } catch (error) {
+      } catch (mainError) {
+        console.error("Erro principal no processamento do município", mainError);
+        clearTimeout(safetyTimeout);
+        commit("SET_PROCESSING_MUNICIPALITY", false);
+        return false;
+      }
+    } catch (outerError) {
+      console.error("Erro externo no processamento do município", outerError);
       commit("SET_PROCESSING_MUNICIPALITY", false);
-      console.error("Erro ao adicionar camada de município:", error);
-      commit("SET_ERROR", "Erro ao adicionar camada de município: " + error.message);
       return false;
     }
   },

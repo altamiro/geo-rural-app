@@ -512,46 +512,68 @@ export default {
     },
 
     // Adicionar método para zoom ao município
-    // Modificar em src/views/GeoView.vue
     handleZoomToMunicipality(municipalityGeometry) {
-      // Verificação mais robusta para evitar recursão
-      if (!municipalityGeometry || this._isZooming) return;
+      // Verificação robusta para evitar processamento indevido
+      if (!municipalityGeometry || this._isZooming) {
+        console.log("Ignorando chamada de zoom - já está em processamento ou geometria inválida");
+        return;
+      }
 
+      // Definir flag de processamento
       this._isZooming = true;
 
-      // Timeout de segurança
-      setTimeout(() => {
+      // Timeout de segurança para garantir que a flag será resetada
+      const safetyTimeout = setTimeout(() => {
         this._isZooming = false;
-      }, 2000);
+      }, 3000);
 
       try {
+        // Verificar referência do mapa
         if (!this.$refs.mapContainer || !this.$refs.mapContainer.view) {
-          console.error('Mapa não inicializado');
+          console.error("Referência do mapa não disponível para zoom");
+          clearTimeout(safetyTimeout);
+          this._isZooming = false;
           return;
         }
 
-        // Validação robusta da geometria
+        // Verificar se a geometria é válida para uso
         if (!municipalityGeometry.coordinates ||
+          !Array.isArray(municipalityGeometry.coordinates) ||
+          municipalityGeometry.coordinates.length === 0 ||
           !Array.isArray(municipalityGeometry.coordinates[0])) {
-          console.error('Formato de geometria inválido');
+          console.error("Formato de geometria inválido para zoom", municipalityGeometry);
+          clearTimeout(safetyTimeout);
+          this._isZooming = false;
           return;
         }
 
-        // Usar .goTo() de forma segura
+        // Usar uma abordagem diferente para criar o extent
+        const extent = {
+          type: "polygon",
+          rings: municipalityGeometry.coordinates[0]
+        };
+
+        // Aplicar zoom com tratamento de erro
         this.$refs.mapContainer.view.goTo({
-          target: {
-            type: "polygon",
-            rings: municipalityGeometry.coordinates[0]
-          }
+          target: extent,
+          zoom: 9
         }, {
-          duration: 1000
+          duration: 1000,
+          easing: "ease-out"
+        }).then(() => {
+          // Sucesso no zoom
+          clearTimeout(safetyTimeout);
+          this._isZooming = false;
         }).catch(error => {
-          console.error('Erro ao navegar para município:', error);
-        }).finally(() => {
+          // Erro no zoom
+          console.error("Erro ao aplicar zoom:", error);
+          clearTimeout(safetyTimeout);
           this._isZooming = false;
         });
       } catch (error) {
-        console.error('Erro:', error);
+        // Erro ao processar zoom
+        console.error("Erro no processamento de zoom:", error);
+        clearTimeout(safetyTimeout);
         this._isZooming = false;
       }
     },

@@ -2,7 +2,7 @@
  * Serviço para funções específicas do ArcGIS Maps SDK
  * Centraliza o carregamento de módulos e funções comuns
  */
-import { loadEsriModules } from "@/utils/esri-loader-config";
+import { loadEsriModules, ensureArcGISLoaded } from "@/utils/esri-loader-config";
 import { INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM } from "@/utils/constants";
 
 class ArcGISService {
@@ -13,6 +13,9 @@ class ArcGISService {
    */
   async initializeMap(containerId) {
     try {
+      // Garantir que a API está carregada antes de prosseguir
+      await ensureArcGISLoaded();
+
       const [Map, MapView, GraphicsLayer, BasemapGallery, Expand] = await loadEsriModules([
         "esri/Map",
         "esri/views/MapView",
@@ -73,6 +76,9 @@ class ArcGISService {
   // Modificar em src/services/arcgis.service.js
   async initializeSketchViewModel(view, layer) {
     try {
+      // Garantir que a API está carregada
+      await ensureArcGISLoaded();
+
       if (!view) {
         throw new Error("View não definida para SketchViewModel");
       }
