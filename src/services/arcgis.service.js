@@ -75,58 +75,45 @@ class ArcGISService {
    */
   // Modificar em src/services/arcgis.service.js
   async initializeSketchViewModel(view, layer) {
+    // Adicionar proteção contra chamadas com parâmetros inválidos
+    if (!view || !layer) {
+      console.error("View ou layer inválidos para SketchViewModel");
+      return null;
+    }
+
     try {
-      // Garantir que a API está carregada
-      await ensureArcGISLoaded();
+      // Verificar se os objetos Esri já existem para evitar recarregá-los
+      const SketchViewModel =
+        window.esri?.widgets?.SketchViewModel ||
+        (await loadEsriModules(["esri/widgets/Sketch/SketchViewModel"]))[0];
 
-      if (!view) {
-        throw new Error("View não definida para SketchViewModel");
+      if (!SketchViewModel) {
+        throw new Error("Não foi possível carregar o módulo SketchViewModel");
       }
 
-      if (!layer) {
-        throw new Error("Layer não definida para SketchViewModel");
-      }
-
-      // Verificar se a view foi inicializada completamente
-      if (view.ready !== true) {
-        console.log("View ainda não está pronta. Aguardando...");
+      // Verificar se a view foi inicializada
+      if (!view.ready) {
         await view.when();
       }
 
-      // Carregar o módulo SketchViewModel
-      const [SketchViewModel] = await loadEsriModules(["esri/widgets/Sketch/SketchViewModel"]);
-
-      // Criar o SketchViewModel com configurações simplificadas inicialmente
+      // Criar com configuração mínima para evitar problemas
       const sketchViewModel = new SketchViewModel({
         view: view,
         layer: layer,
-        // Usar configurações mínimas para evitar problemas
+        // Configurações básicas para evitar complexidade
         defaultCreateOptions: {
-          mode: "click", // Modo mais simples em vez de freehand
+          mode: "click",
+        },
+        updateOnGraphicClick: false,
+        defaultUpdateOptions: {
+          toggleToolOnClick: false,
         },
       });
 
-      // Validar que o SketchViewModel foi criado corretamente
-      if (!sketchViewModel) {
-        throw new Error("Falha ao criar SketchViewModel");
-      }
-
-      // Adicionar manipuladores de eventos básicos para monitorar problemas
-      sketchViewModel.on("create-error", (error) => {
-        console.error("Erro durante a criação:", error);
-      });
-
-      console.log("SketchViewModel inicializado com sucesso");
-
-      // Retornar o modelo apenas quando estiver realmente pronto
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(sketchViewModel);
-        }, 100); // Pequeno atraso para garantir inicialização completa
-      });
+      return sketchViewModel;
     } catch (error) {
       console.error("Erro ao inicializar SketchViewModel:", error);
-      throw error;
+      return null;
     }
   }
 

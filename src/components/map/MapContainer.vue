@@ -79,28 +79,32 @@ export default {
     }),
 
     async initializeMapSafely() {
+      // Evitar inicializações múltiplas
+      if (this._initializing) {
+        console.log("Inicialização já em andamento, ignorando chamada duplicada");
+        return;
+      }
+
+      this._initializing = true;
+
       try {
-        // Aguardar explicitamente o carregamento da API ArcGIS
-        await ensureArcGISLoaded();
+        // Adicionar timeout para garantir que não ficaremos presos
+        const arcgisPromise = ensureArcGISLoaded();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Timeout esperando ArcGIS API")), 30000);
+        });
 
-        // Inicializar o mapa somente após o carregamento da API
-        const mapObjects = await this.initializeMap();
+        // Usar Promise.race para evitar ficar preso
+        await Promise.race([arcgisPromise, timeoutPromise]);
 
-        // Emitir evento apenas quando o mapa estiver completamente inicializado
-        this.$emit('map-initialized', mapObjects);
+        console.log("ArcGIS carregado, inicializando mapa...");
+        await this.initializeMap();
 
-        // Inicializar o SketchViewModel apenas após o mapa estar pronto
-        if (mapObjects && mapObjects.view) {
-          await mapObjects.view.when(); // Aguardar a view estar pronta
-
-          const sketchViewModel = await this.initializeSketchViewModel();
-          if (sketchViewModel) {
-            this.$emit('sketch-view-model-ready', sketchViewModel);
-          }
-        }
+        this._initializing = false;
       } catch (error) {
-        console.error("Falha na inicialização do mapa:", error);
-        this.$message.error("Não foi possível inicializar o mapa. Tente recarregar a página.");
+        this._initializing = false;
+        console.error("Falha ao garantir que ArcGIS está carregado:", error);
+        this.$message.error("Não foi possível carregar os recursos de mapa. Tente recarregar a página.");
       }
     },
 

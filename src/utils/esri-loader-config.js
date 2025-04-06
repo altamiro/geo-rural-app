@@ -56,7 +56,12 @@ export function isArcGISLoaded() {
 }
 
 export function ensureArcGISLoaded() {
-  return new Promise((resolve, reject) => {
+  // Adicionar variável de controle para evitar múltiplas chamadas
+  if (window._arcgisLoadPromise) {
+    return window._arcgisLoadPromise;
+  }
+
+  const loadPromise = new Promise((resolve, reject) => {
     // Verificar se já está carregado
     if (isArcGISLoaded()) {
       resolve(true);
@@ -65,21 +70,43 @@ export function ensureArcGISLoaded() {
 
     // Definir timeout para falha
     const timeoutId = setTimeout(() => {
+      window._arcgisLoadAttempted = true;
       reject(new Error("Timeout ao carregar ArcGIS API"));
     }, 20000); // 20 segundos de timeout
 
-    // Adicionar script
-    const script = document.createElement("script");
-    script.src = "https://js.arcgis.com/4.24/";
-    script.onload = () => {
-      clearTimeout(timeoutId);
-      resolve(true);
-    };
-    script.onerror = (error) => {
-      clearTimeout(timeoutId);
-      reject(error || new Error("Falha ao carregar API ArcGIS"));
-    };
+    // Adicionar script apenas se não existir
+    if (!document.querySelector('script[src*="js.arcgis.com/4.24/"]')) {
+      const script = document.createElement("script");
+      script.src = "https://js.arcgis.com/4.24/";
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        // Esperar um pouco mais para garantir que todos os módulos sejam registrados
+        setTimeout(() => {
+          window._arcgisLoadAttempted = true;
+          resolve(true);
+        }, 500);
+      };
+      script.onerror = (error) => {
+        clearTimeout(timeoutId);
+        window._arcgisLoadAttempted = true;
+        reject(error || new Error("Falha ao carregar API ArcGIS"));
+      };
 
-    document.head.appendChild(script);
+      document.head.appendChild(script);
+    } else {
+      // Script já existe, apenas aguardar carregamento
+      const checkLoaded = setInterval(() => {
+        if (isArcGISLoaded()) {
+          clearInterval(checkLoaded);
+          clearTimeout(timeoutId);
+          window._arcgisLoadAttempted = true;
+          resolve(true);
+        }
+      }, 100);
+    }
   });
+
+  // Armazenar a promise para reutilização
+  window._arcgisLoadPromise = loadPromise;
+  return loadPromise;
 }

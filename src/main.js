@@ -13,77 +13,80 @@ Vue.config.productionTip = false
 
 // Handler global de erros
 Vue.config.errorHandler = function(err, vm, info) {
-  console.error('Erro global Vue:', err);
-  console.error('Componente:', vm);
+  console.error('Erro global Vue:', err.message);
+  console.error('Componente:', vm?.$options?.name || 'Desconhecido');
   console.error('Info:', info);
 };
 
-// Listener global para erros JS
+// Listener global para erros JS - com prevenção de recursão
 window.addEventListener('error', (event) => {
-  console.error('Erro global JavaScript:', event.error);
+  // Evitar logging excessivo
+  if (event.error && !window._lastErrorLogged) {
+    window._lastErrorLogged = event.error.message;
+    console.error('Erro global JavaScript:', event.error.message);
+
+    // Resetar após um tempo para permitir novos logs
+    setTimeout(() => {
+      window._lastErrorLogged = null;
+    }, 1000);
+  }
 });
 
-// Verificar se a aplicação está pronta para inicializar
-const checkResourcesLoaded = () => {
-  // Verificar se estilos críticos foram carregados
-  const styleSheets = document.styleSheets;
-  const hasStyles = styleSheets && styleSheets.length > 0;
+// Variáveis para controle de tentativas
+let arcgisLoadAttempted = false;
 
-  // Verificar se o elemento de app existe
-  const appElement = document.getElementById('app');
-
-  return hasStyles && appElement;
+// Iniciar a aplicação Vue sem depender da API ArcGIS
+const startVueApp = () => {
+  new Vue({
+    store,
+    render: h => h(App)
+  }).$mount('#app');
+  console.log('Aplicação Vue iniciada');
 };
 
-// Iniciar a aplicação
-const startApp = async () => {
+// Carregar a API ArcGIS de forma independente
+const loadArcGISAPI = async () => {
+  if (arcgisLoadAttempted) {
+    console.log('Já tentou carregar ArcGIS, ignorando chamada duplicada');
+    return;
+  }
+
+  arcgisLoadAttempted = true;
+
   try {
-    // Garantir que a API ArcGIS seja carregada primeiro
-    await ensureArcGISLoaded();
+    // Tentar carregar a API com timeout de segurança
+    const loadPromise = ensureArcGISLoaded();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout ao carregar ArcGIS API')), 15000);
+    });
+
+    await Promise.race([loadPromise, timeoutPromise]);
     console.log('ArcGIS API carregada com sucesso');
 
-    // Iniciar o Vue app
-    new Vue({
-      store,
-      render: h => h(App)
-    }).$mount('#app');
+    // Guardar no estado global que a API foi carregada
+    store.commit('map/SET_ARCGIS_LOADED', true);
   } catch (error) {
-    console.error('Erro ao iniciar aplicação:', error);
-    // Ainda iniciar o app, mesmo sem a API ArcGIS
-    console.warn('Iniciando aplicação sem APIs de mapa completas');
-    new Vue({
-      store,
-      render: h => h(App)
-    }).$mount('#app');
+    console.error('Erro ao carregar ArcGIS API:', error);
+    store.commit('map/SET_ARCGIS_LOADED', false);
+    store.commit('map/SET_ERROR', 'Não foi possível carregar a API ArcGIS. Algumas funcionalidades de mapa estarão indisponíveis.');
   }
 };
 
-// Função para iniciar a aplicação quando todos os recursos necessários estiverem prontos
-const initializeAppWhenReady = () => {
-  // Tentar carregar a API ArcGIS
-  ensureArcGISLoaded()
-    .then(() => {
-      console.log('ArcGIS API carregada com sucesso');
-      startApp();
-    })
-    .catch(error => {
-      console.error('Erro ao carregar ArcGIS API:', error);
-      // Ainda podemos iniciar a aplicação, mas algumas funcionalidades de mapa não funcionarão
-      console.warn('Iniciando aplicação sem APIs de mapa completas');
-      startApp();
-    });
+// Inicialização principal da aplicação
+const initializeApp = () => {
+  // Sempre iniciar a aplicação Vue primeiro
+  startVueApp();
+
+  // Carregar ArcGIS separadamente
+  loadArcGISAPI().catch(error => {
+    console.error('Falha ao carregar ArcGIS:', error);
+  });
 };
 
-// Verificar se recursos básicos já estão carregados
-if (checkResourcesLoaded()) {
-  // Recursos básicos já carregados, continuar com o carregamento do ArcGIS
-  console.log('Recursos básicos carregados, carregando ArcGIS...');
-  initializeAppWhenReady();
+// Verificar se o DOM está pronto para inicializar a aplicação
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
-  // Aguardar pelo carregamento dos recursos básicos
-  console.log('Aguardando carregamento de recursos básicos...');
-  window.addEventListener('load', () => {
-    console.log('Recursos básicos carregados após evento load, carregando ArcGIS...');
-    initializeAppWhenReady();
-  });
+  // DOM já está pronto
+  initializeApp();
 }

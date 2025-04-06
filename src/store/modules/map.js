@@ -14,6 +14,7 @@ const state = {
   selectedBasemap: "satellite",
   mapInitialized: false,
   sketchViewModelReady: false,
+  arcgisLoaded: false,
   loading: false,
   error: null,
 };
@@ -412,6 +413,10 @@ const mutations = {
 
   SET_PROCESSING_MUNICIPALITY(state, status) {
     state._processingMunicipality = status;
+  },
+
+  SET_ARCGIS_LOADED(state, status) {
+    state.arcgisLoaded = status;
   },
 };
 
