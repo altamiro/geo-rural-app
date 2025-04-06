@@ -27,6 +27,20 @@ const getters = {
 // Actions
 const actions = {
   async addMunicipalityLayer({ state, commit }, geometry) {
+    // Verificar primeiro se o mapa e a view existem
+    if (!state.map || !state.view) {
+      console.error("Mapa ou view não inicializados");
+      return false;
+    }
+
+    // Garantir que a view está pronta antes de adicionar camadas
+    try {
+      await state.view.when();
+    } catch (error) {
+      console.error("Erro ao aguardar a inicialização da view:", error);
+      return false;
+    }
+
     try {
       // Verificar se já está processando para evitar recursão
       if (state._processingMunicipality) {

@@ -1,5 +1,9 @@
 <template lang="pug">
   .geo-view
+    .map-loading-overlay(v-if="!mapInitialized || !sketchViewModelReady")
+      .loading-spinner
+        i.el-icon-loading
+      .loading-text Carregando mapa e ferramentas...
     .geo-card
       .geo-header
         h2 Dados de Geolocalização
@@ -156,6 +160,12 @@ import { LAYER_TYPES } from '@/utils/constants'
 
 export default {
   name: 'GeoView',
+  provide() {
+    return {
+      mapReady: () => this.mapInitialized,
+      sketchReady: () => this.sketchViewModelReady
+    };
+  },
   components: {
     AppHeader,
     MapContainer,
@@ -264,6 +274,22 @@ export default {
 
       // Informar ao usuário
       this.$message.success('Mapa carregado com sucesso', { duration: 1500 })
+    },
+
+    checkMapReady() {
+      if (!this.mapInitialized) {
+        this.$message.warning('O mapa ainda está sendo inicializado. Aguarde um momento.');
+        return false;
+      }
+      return true;
+    },
+
+    checkSketchReady() {
+      if (!this.sketchViewModelReady) {
+        this.$message.warning('As ferramentas de desenho estão sendo inicializadas. Aguarde um momento.');
+        return false;
+      }
+      return true;
     },
 
     // Quando o SketchViewModel está pronto
@@ -770,5 +796,30 @@ export default {
 .slide-right-enter,
 .slide-right-leave-to {
   transform: translateX(100%);
+}
+
+.map-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  .loading-spinner {
+    font-size: 32px;
+    color: $primary-color;
+    margin-bottom: $spacing-medium;
+  }
+
+  .loading-text {
+    font-size: $font-size-medium;
+    color: $text-primary;
+  }
 }
 </style>

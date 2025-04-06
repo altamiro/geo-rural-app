@@ -80,14 +80,27 @@ export default {
 
     async initializeMapSafely() {
       try {
-        // Garantir que a API ArcGIS esteja carregada antes de inicializar o mapa
+        // Aguardar explicitamente o carregamento da API ArcGIS
         await ensureArcGISLoaded();
 
-        // Continuar com a inicialização do mapa
-        this.initializeMap();
+        // Inicializar o mapa somente após o carregamento da API
+        const mapObjects = await this.initializeMap();
+
+        // Emitir evento apenas quando o mapa estiver completamente inicializado
+        this.$emit('map-initialized', mapObjects);
+
+        // Inicializar o SketchViewModel apenas após o mapa estar pronto
+        if (mapObjects && mapObjects.view) {
+          await mapObjects.view.when(); // Aguardar a view estar pronta
+
+          const sketchViewModel = await this.initializeSketchViewModel();
+          if (sketchViewModel) {
+            this.$emit('sketch-view-model-ready', sketchViewModel);
+          }
+        }
       } catch (error) {
-        console.error("Falha ao garantir que ArcGIS está carregado:", error);
-        this.$message.error("Não foi possível carregar os recursos de mapa. Tente recarregar a página.");
+        console.error("Falha na inicialização do mapa:", error);
+        this.$message.error("Não foi possível inicializar o mapa. Tente recarregar a página.");
       }
     },
 

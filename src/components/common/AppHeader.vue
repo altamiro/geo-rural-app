@@ -70,37 +70,38 @@ export default {
     },
 
     changeMunicipality() {
+      // Verificar se o município foi encontrado
       const municipality = this.municipalities.find(m => m.id === this.selectedMunicipality);
 
-      if (municipality) {
-        // Validar a geometria antes de prosseguir
-        if (!municipality.geometry ||
-          !municipality.geometry.type ||
-          !municipality.geometry.coordinates ||
-          !Array.isArray(municipality.geometry.coordinates) ||
-          !Array.isArray(municipality.geometry.coordinates[0])) {
-          this.$message.error(`Geometria inválida para o município ${municipality.name}`);
-          return;
-        }
-
-        // Definir município no store
-        this.setMunicipality({
-          id: municipality.id,
-          name: municipality.name
-        });
-
-        // Adicionar limite do município ao mapa
-        this.addMunicipalityLayer(municipality.geometry);
-
-        // Mensagem de confirmação
-        this.$message({
-          message: `Município selecionado: ${municipality.name}`,
-          type: 'success'
-        });
-
-        // Centralizar o mapa no município
-        this.$emit('zoom-to-municipality', municipality.geometry);
+      if (!municipality) {
+        this.$message.warning('Município não encontrado');
+        return;
       }
+
+      // Definir município no store
+      this.setMunicipality({
+        id: municipality.id,
+        name: municipality.name
+      });
+
+      // Verificar se o mapa está inicializado antes de tentar adicionar camadas
+      this.$nextTick(() => {
+        this.addMunicipalityLayer(municipality.geometry)
+          .then(success => {
+            if (success) {
+              this.$message({
+                message: `Município selecionado: ${municipality.name}`,
+                type: 'success'
+              });
+            } else {
+              this.$message.warning('Não foi possível carregar os limites do município');
+            }
+          })
+          .catch(error => {
+            console.error('Erro ao adicionar limites do município:', error);
+            this.$message.error('Erro ao carregar os limites do município');
+          });
+      });
     },
 
     saveChanges() {

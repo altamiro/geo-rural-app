@@ -36,14 +36,25 @@ const checkResourcesLoaded = () => {
 };
 
 // Iniciar a aplicação
-const startApp = () => {
+const startApp = async () => {
   try {
+    // Garantir que a API ArcGIS seja carregada primeiro
+    await ensureArcGISLoaded();
+    console.log('ArcGIS API carregada com sucesso');
+
+    // Iniciar o Vue app
     new Vue({
       store,
       render: h => h(App)
     }).$mount('#app');
   } catch (error) {
-    console.error('Erro ao iniciar aplicação Vue:', error);
+    console.error('Erro ao iniciar aplicação:', error);
+    // Ainda iniciar o app, mesmo sem a API ArcGIS
+    console.warn('Iniciando aplicação sem APIs de mapa completas');
+    new Vue({
+      store,
+      render: h => h(App)
+    }).$mount('#app');
   }
 };
 

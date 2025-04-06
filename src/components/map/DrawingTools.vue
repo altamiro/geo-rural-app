@@ -38,6 +38,7 @@ import { mapActions, mapState } from 'vuex'
 
 export default {
   name: 'DrawingTools',
+  inject: ['mapReady', 'sketchReady'],
   props: {
     selectedLayer: {
       type: String,
@@ -67,6 +68,13 @@ export default {
       deleteLayer: 'layers/deleteLayer'
     }),
     activateTool(tool) {
+
+      // Verificar se mapa e ferramentas estão prontos
+      if (!this.mapReady() || !this.sketchReady()) {
+        this.$message.warning('As ferramentas de desenho ainda não estão prontas. Aguarde um momento.');
+        return;
+      }
+
       // Valida se uma camada está selecionada
       if (!this.isLayerSelected) {
         this.$message.warning('Selecione uma camada antes de usar as ferramentas de desenho.')
@@ -81,13 +89,6 @@ export default {
 
       // Define a ferramenta ativa
       this.activeTool = tool
-
-      // Verificação robusta do SketchViewModel
-      if (!this.sketchViewModel) {
-        console.error("Sketch view model não inicializado")
-        this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.")
-        return
-      }
 
       // Emitir evento para o componente pai saber qual ferramenta foi ativada
       this.$emit('draw', { tool, layerId: this.selectedLayer })
