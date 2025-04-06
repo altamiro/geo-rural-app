@@ -1,9 +1,13 @@
 <template lang="pug">
   .geo-view
-    .map-loading-overlay(v-if="!mapInitialized || !sketchViewModelReady")
+  .map-loading-overlay(v-if="!mapInitialized || !sketchViewModelReady")
       .loading-spinner
         i.el-icon-loading
-      .loading-text Carregando mapa e ferramentas...
+      .loading-text {{ loadingMessage }}
+      .loading-time {{ loadingTimeText }}
+      .loading-actions(v-if="loadingTooLong")
+        el-button(type="primary" @click="forceInitialize") Continuar mesmo assim
+        el-button(@click="reloadPage") Recarregar página
     .geo-card
       .geo-header
         h2 Dados de Geolocalização
@@ -65,6 +69,8 @@
         @show-search="toggleSidebar('search')"
         @map-initialized="onMapInitialized"
         @sketch-view-model-ready="onSketchViewModelReady"
+        @map-error="onMapError"
+        @sketch-view-model-error="onSketchError"
         @zoom-to-municipality="handleZoomToMunicipality"
       )
 
@@ -196,6 +202,10 @@ export default {
       mapInitialized: false,
       sketchViewModelReady: false,
 
+      loadingStartTime: Date.now(),
+      loadingTooLong: false,
+      loadingInterval: null,
+
       // Busca
       searchQuery: '',
 
@@ -223,6 +233,27 @@ export default {
       ]
     }
   },
+  mounted() {
+    // Iniciar o intervalo para verificar o tempo de carregamento
+    this.loadingInterval = setInterval(() => {
+      const elapsed = (Date.now() - this.loadingStartTime) / 1000
+      if (elapsed > 10 && (!this.mapInitialized || !this.sketchViewModelReady)) {
+        this.loadingTooLong = true
+      }
+
+      // Timeout de segurança após 30 segundos
+      if (elapsed > 30) {
+        this.forceInitialize()
+      }
+    }, 1000)
+  },
+
+  beforeDestroy() {
+    // Limpar o intervalo quando o componente for destruído
+    if (this.loadingInterval) {
+      clearInterval(this.loadingInterval)
+    }
+  },
   computed: {
     ...mapState({
       propertyArea: state => state.property.propertyArea,
@@ -234,6 +265,17 @@ export default {
     ...mapGetters({
       getLayerById: 'layers/getLayerById'
     }),
+
+    loadingMessage() {
+      if (!this.mapInitialized) return 'Carregando mapa...'
+      if (!this.sketchViewModelReady) return 'Inicializando ferramentas de desenho...'
+      return 'Carregando...'
+    },
+
+    loadingTimeText() {
+      const elapsed = Math.floor((Date.now() - this.loadingStartTime) / 1000)
+      return `Tempo decorrido: ${elapsed} segundos`
+    },
     // Camada selecionada atualmente
     selectedLayer() {
       if (this.selectedProperty) return this.selectedProperty
@@ -661,7 +703,32 @@ export default {
         this.$message.error('Erro ao inicializar o serviço de busca.')
         console.error('Erro ao inicializar busca:', error)
       }
+    },
+    forceInitialize() {
+      this.mapInitialized = true
+      this.sketchViewModelReady = true
+      clearInterval(this.loadingInterval)
+      this.$message.warning('Forçando inicialização da aplicação. Algumas funções do mapa podem não funcionar corretamente.')
+    },
+
+    reloadPage() {
+      window.location.reload()
+    },
+
+    onMapError(errorMessage) {
+      console.error('Erro na inicialização do mapa:', errorMessage);
+      this.$message.error(`Erro ao carregar o mapa: ${errorMessage}`);
+      // Após um erro crítico, mostrar opção para continuar
+      this.loadingTooLong = true;
+    },
+
+    onSketchError(errorMessage) {
+      console.error('Erro na inicialização do SketchViewModel:', errorMessage);
+      this.$message.error(`Erro ao inicializar ferramentas de desenho: ${errorMessage}`);
+      // Permitir continuar sem o SketchViewModel
+      this.sketchViewModelReady = true;
     }
+
   }
 }
 </script>
@@ -821,5 +888,17 @@ export default {
     font-size: $font-size-medium;
     color: $text-primary;
   }
+}
+
+.loading-time {
+  margin-top: 10px;
+  font-size: 14px;
+  color: $text-secondary;
+}
+
+.loading-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
 }
 </style>

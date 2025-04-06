@@ -110,69 +110,110 @@ export default {
 
     async initializeMap() {
       try {
+        // Verificar se o elemento mapView existe no DOM
+        const mapViewElement = document.getElementById('mapView');
+        if (!mapViewElement) {
+          throw new Error("Elemento #mapView não encontrado no DOM");
+        }
+
+        console.log("Iniciando carregamento do mapa...");
+
         // Usar o serviço para inicializar o mapa
         const mapObjects = await ArcGISService.initializeMap('mapView');
+
+        // Verificar se os objetos foram retornados corretamente
+        if (!mapObjects || !mapObjects.map || !mapObjects.view || !mapObjects.graphicsLayer) {
+          throw new Error("Inicialização do mapa falhou: objetos do mapa incompletos");
+        }
+
+        console.log("Objetos do mapa retornados com sucesso:", mapObjects);
 
         // Armazenar referências aos objetos do mapa
         this.map = mapObjects.map;
         this.view = mapObjects.view;
         this.graphicsLayer = mapObjects.graphicsLayer;
 
-        // Configurar eventos do mapa antes de inicializar o SketchViewModel
-        this.setupMapEvents();
+        // Emitir o evento map-initialized imediatamente após obter as referências básicas
+        // Isso permite que o componente pai saiba que o mapa base está disponível
+        this.$emit('map-initialized', { map: this.map, view: this.view, graphicsLayer: this.graphicsLayer });
+        console.log('Evento map-initialized emitido');
 
-        // Esperar a view ser completamente inicializada
+        // Aguardar a view ser completamente inicializada
         if (this.view) {
-          // Aguardar explicitamente por .when() com tratamento de erro
           try {
+            console.log("Aguardando inicialização da view do mapa...");
             await this.view.when();
             console.log("View do mapa inicializada com sucesso");
+
+            // Configurar eventos do mapa APÓS a view estar pronta
+            this.setupMapEvents();
           } catch (viewError) {
             console.error("Erro ao inicializar view do mapa:", viewError);
             throw new Error("Falha na inicialização da view do mapa");
           }
-
-          // Inicializar o SketchViewModel com tratamento de erro explícito
-          try {
-            this.sketchViewModel = await ArcGISService.initializeSketchViewModel(this.view, this.graphicsLayer);
-
-            if (this.sketchViewModel) {
-              this.storeSketchViewModel(this.sketchViewModel);
-              this.$emit('sketch-view-model-ready', this.sketchViewModel);
-            } else {
-              throw new Error("SketchViewModel não inicializado corretamente");
-            }
-          } catch (sketchError) {
-            console.error("Erro ao inicializar SketchViewModel:", sketchError);
-            this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.");
-          }
+        } else {
+          throw new Error("Referência da view não disponível após inicialização");
         }
 
-        // Inicialização concluída
-        this.$emit('map-initialized');
+        // Inicializar o SketchViewModel somente depois que a view estiver pronta
+        try {
+          console.log("Inicializando SketchViewModel...");
+          this.sketchViewModel = await ArcGISService.initializeSketchViewModel(this.view, this.graphicsLayer);
+
+          if (this.sketchViewModel) {
+            console.log("SketchViewModel inicializado com sucesso");
+            this.storeSketchViewModel(this.sketchViewModel);
+            this.$emit('sketch-view-model-ready', this.sketchViewModel);
+            console.log("Evento sketch-view-model-ready emitido");
+          } else {
+            throw new Error("SketchViewModel não inicializado corretamente");
+          }
+        } catch (sketchError) {
+          console.error("Erro ao inicializar SketchViewModel:", sketchError);
+          this.$emit('sketch-view-model-error', sketchError.message);
+          // Não lançar o erro para não interromper o fluxo - o mapa pode funcionar mesmo sem o SketchViewModel
+          this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.");
+        }
+
+        return { map: this.map, view: this.view, graphicsLayer: this.graphicsLayer };
       } catch (error) {
         console.error("Erro ao inicializar mapa:", error);
+        this.$emit('map-error', error.message);
         this.$message.error("Não foi possível inicializar o mapa. Detalhes: " + error.message);
+        throw error;
       }
     },
 
     setupMapEvents() {
+      // Verificar se a view existe antes de configurar eventos
+      if (!this.view) {
+        console.error("View não disponível para configurar eventos");
+        return;
+      }
+
       // Evento de movimento do ponteiro para atualizar coordenadas
       this.view.on("pointer-move", (event) => {
-        const point = this.view.toMap({ x: event.x, y: event.y })
-        if (point && isValidCoordinate(point.longitude, point.latitude)) {
-          this.longitude = point.longitude.toFixed(6)
-          this.latitude = point.latitude.toFixed(6)
+        try {
+          const point = this.view.toMap({ x: event.x, y: event.y });
+          if (point && isValidCoordinate(point.longitude, point.latitude)) {
+            this.longitude = point.longitude.toFixed(6);
+            this.latitude = point.latitude.toFixed(6);
+          }
+        } catch (error) {
+          console.warn("Erro ao processar movimento do ponteiro:", error);
+          // Não fazer nada - apenas evitar que o erro interrompa a operação
         }
-      })
+      });
 
-      // Eventos do modelo de desenho
+      // Eventos do modelo de desenho - verificar se existe
       if (this.sketchViewModel) {
         this.sketchViewModel.on("create", (event) => {
           if (event.state === "complete") {
-            this.handleDrawComplete(event.graphic, event.tool)
+            this.handleDrawComplete(event.graphic, event.tool);
           }
-        })
+        });
+      } else {
+        console.warn("SketchViewModel não disponível para configurar eventos");
       }
     },
 

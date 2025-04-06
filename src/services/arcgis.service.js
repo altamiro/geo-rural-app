@@ -24,6 +24,17 @@ class ArcGISService {
         "esri/widgets/Expand",
       ]);
 
+      // Verificar se todos os módulos foram carregados
+      if (!Map || !MapView || !GraphicsLayer) {
+        throw new Error("Falha ao carregar módulos essenciais do ArcGIS");
+      }
+
+      // Verificar se o container existe
+      const container = document.getElementById(containerId);
+      if (!container) {
+        throw new Error(`Container #${containerId} não encontrado`);
+      }
+
       // Criar camada de gráficos
       const graphicsLayer = new GraphicsLayer();
 
@@ -41,20 +52,32 @@ class ArcGISService {
         zoom: INITIAL_MAP_ZOOM,
       });
 
+      // Vamos verificar se a view foi criada corretamente
+      if (!view) {
+        throw new Error("Falha ao criar a MapView");
+      }
+
       // Adicionar galeria de mapas base
-      const basemapGallery = new BasemapGallery({
-        view: view,
-      });
+      let basemapGallery = null;
+      try {
+        basemapGallery = new BasemapGallery({
+          view: view,
+        });
 
-      // Colocar galeria em um widget de expansão
-      const bgExpand = new Expand({
-        view: view,
-        content: basemapGallery,
-        expandIconClass: "esri-icon-basemap",
-      });
+        // Colocar galeria em um widget de expansão
+        const bgExpand = new Expand({
+          view: view,
+          content: basemapGallery,
+          expandIconClass: "esri-icon-basemap",
+        });
 
-      view.ui.add(bgExpand, "top-right");
+        view.ui.add(bgExpand, "top-right");
+      } catch (widgetError) {
+        console.warn("Erro ao adicionar galeria de mapas base:", widgetError);
+        // Continuar mesmo sem a galeria
+      }
 
+      // Garantir que os objetos essenciais estão disponíveis
       return {
         map,
         view,
