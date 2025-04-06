@@ -75,53 +75,52 @@ export default {
       calculateAreas: 'property/calculateAreas',
       storeSketchViewModel: 'map/SET_SKETCH_VIEW_MODEL'
     }),
+    // Modificar em src/components/map/MapContainer.vue
     async initializeMap() {
       try {
         // Usar o serviço para inicializar o mapa
-        const mapObjects = await ArcGISService.initializeMap('mapView')
+        const mapObjects = await ArcGISService.initializeMap('mapView');
 
         // Armazenar referências aos objetos do mapa
-        this.map = mapObjects.map
-        this.view = mapObjects.view
-        this.graphicsLayer = mapObjects.graphicsLayer
+        this.map = mapObjects.map;
+        this.view = mapObjects.view;
+        this.graphicsLayer = mapObjects.graphicsLayer;
 
         // Configurar eventos do mapa antes de inicializar o SketchViewModel
-        this.setupMapEvents()
+        this.setupMapEvents();
 
-        // Esperar a view ser completamente inicializada antes de criar o SketchViewModel
-        // Isso é crítico para evitar condições de corrida
+        // Esperar a view ser completamente inicializada
         if (this.view) {
-          // Garantir que a view esteja pronta
-          await this.view.when();
-
-          // Inicializar o modelo de desenho
-          this.sketchViewModel = await ArcGISService.initializeSketchViewModel(this.view, this.graphicsLayer)
-
-          // Armazenar o SketchViewModel no store APÓS sua inicialização completa
-          if (this.sketchViewModel) {
-            this.storeSketchViewModel(this.sketchViewModel)
-
-            // Adicionar eventos do modelo de desenho agora que ele está pronto
-            this.sketchViewModel.on("create", (event) => {
-              if (event.state === "complete") {
-                this.handleDrawComplete(event.graphic, event.tool)
-              }
-            })
-
-            // Emitir evento específico para o SketchViewModel
-            this.$emit('sketch-view-model-ready', this.sketchViewModel)
-          } else {
-            throw new Error("Não foi possível inicializar o SketchViewModel")
+          // Aguardar explicitamente por .when() com tratamento de erro
+          try {
+            await this.view.when();
+            console.log("View do mapa inicializada com sucesso");
+          } catch (viewError) {
+            console.error("Erro ao inicializar view do mapa:", viewError);
+            throw new Error("Falha na inicialização da view do mapa");
           }
-        } else {
-          throw new Error("A view do mapa não foi inicializada corretamente")
+
+          // Inicializar o SketchViewModel com tratamento de erro explícito
+          try {
+            this.sketchViewModel = await ArcGISService.initializeSketchViewModel(this.view, this.graphicsLayer);
+
+            if (this.sketchViewModel) {
+              this.storeSketchViewModel(this.sketchViewModel);
+              this.$emit('sketch-view-model-ready', this.sketchViewModel);
+            } else {
+              throw new Error("SketchViewModel não inicializado corretamente");
+            }
+          } catch (sketchError) {
+            console.error("Erro ao inicializar SketchViewModel:", sketchError);
+            this.$message.error("Ferramentas de desenho não disponíveis. Tente recarregar a página.");
+          }
         }
 
         // Inicialização concluída
-        this.$emit('map-initialized')
+        this.$emit('map-initialized');
       } catch (error) {
-        console.error("Erro ao inicializar mapa:", error)
-        this.$message.error("Não foi possível inicializar o mapa")
+        console.error("Erro ao inicializar mapa:", error);
+        this.$message.error("Não foi possível inicializar o mapa. Detalhes: " + error.message);
       }
     },
 

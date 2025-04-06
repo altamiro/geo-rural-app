@@ -32,12 +32,24 @@ const actions = {
       if (state._processingMunicipality) return;
       commit("SET_PROCESSING_MUNICIPALITY", true);
 
+      // Adicione um timeout de segurança em caso de falha
+      const timeoutId = setTimeout(() => {
+        commit("SET_PROCESSING_MUNICIPALITY", false);
+      }, 10000); // 10 segundos
+
       // Adicione setTimeout para quebrar possível recursão
       setTimeout(async () => {
         try {
           // Se não há geometria, retornar
-          if (!geometry || !geometry.coordinates || !Array.isArray(geometry.coordinates[0])) {
-            console.error("Geometria do município inválida:", geometry);
+          if (
+            !geometry ||
+            !geometry.coordinates ||
+            !Array.isArray(geometry.coordinates) ||
+            !Array.isArray(geometry.coordinates[0])
+          ) {
+            console.error("Geometria do município inválida");
+            clearTimeout(timeoutId);
+            commit("SET_PROCESSING_MUNICIPALITY", false);
             return;
           }
 
@@ -101,6 +113,7 @@ const actions = {
           // Salvar referência da camada
           commit("SET_MUNICIPALITY_LAYER", municipalityLayer);
         } finally {
+          clearTimeout(timeoutId);
           commit("SET_PROCESSING_MUNICIPALITY", false);
         }
       }, 0);

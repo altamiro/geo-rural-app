@@ -512,35 +512,47 @@ export default {
     },
 
     // Adicionar método para zoom ao município
+    // Modificar em src/views/GeoView.vue
     handleZoomToMunicipality(municipalityGeometry) {
-      // Adicione uma verificação para evitar chamadas recursivas
-      if (this._isZooming) return;
+      // Verificação mais robusta para evitar recursão
+      if (!municipalityGeometry || this._isZooming) return;
+
+      this._isZooming = true;
+
+      // Timeout de segurança
+      setTimeout(() => {
+        this._isZooming = false;
+      }, 2000);
 
       try {
-        this._isZooming = true;
+        if (!this.$refs.mapContainer || !this.$refs.mapContainer.view) {
+          console.error('Mapa não inicializado');
+          return;
+        }
 
-        if (this.$refs.mapContainer && this.$refs.mapContainer.view) {
-          // Verificar se a geometria está no formato correto
-          if (!municipalityGeometry || !municipalityGeometry.coordinates) {
-            console.error('Geometria inválida para zoom:', municipalityGeometry);
-            return;
-          }
+        // Validação robusta da geometria
+        if (!municipalityGeometry.coordinates ||
+          !Array.isArray(municipalityGeometry.coordinates[0])) {
+          console.error('Formato de geometria inválido');
+          return;
+        }
 
-          const extent = {
+        // Usar .goTo() de forma segura
+        this.$refs.mapContainer.view.goTo({
+          target: {
             type: "polygon",
             rings: municipalityGeometry.coordinates[0]
-          };
-
-          this.$refs.mapContainer.view.goTo({
-            target: extent,
-            zoom: 9
-          });
-        }
-      } finally {
-        // Certifique-se de limpar a flag mesmo em caso de erro
-        setTimeout(() => {
+          }
+        }, {
+          duration: 1000
+        }).catch(error => {
+          console.error('Erro ao navegar para município:', error);
+        }).finally(() => {
           this._isZooming = false;
-        }, 1000); // Adiciona um atraso para garantir que a operação termine
+        });
+      } catch (error) {
+        console.error('Erro:', error);
+        this._isZooming = false;
       }
     },
 

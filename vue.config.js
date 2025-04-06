@@ -1,4 +1,5 @@
-const { defineConfig } = require('@vue/cli-service')
+const { defineConfig } = require('@vue/cli-service');
+const path = require('path');
 
 module.exports = defineConfig({
   transpileDependencies: true,
@@ -12,16 +13,37 @@ module.exports = defineConfig({
     }
   },
   configureWebpack: {
+    output: {
+      publicPath: '/',
+      filename: '[name].[hash].js'
+    },
+    // Configurar resolução de módulos
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src')
+      },
+      extensions: ['.js', '.vue', '.json']
+    },
     performance: {
       hints: false, // Desativar avisos de performance
       maxEntrypointSize: 1024000, // Aumentar tamanho limite para entrypoints
       maxAssetSize: 1024000 // Aumentar tamanho limite para assets
     },
     optimization: {
+      runtimeChunk: 'single',
       splitChunks: {
-        chunks: 'all', // Melhorar divisão de chunks
-        minSize: 20000,
-        maxSize: 250000
+        chunks: 'all',
+        maxInitialRequests: Infinity,
+        minSize: 0,
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name(module) {
+              const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
+              return `vendor.${packageName.replace('@', '')}`;
+            }
+          }
+        }
       }
     }
   },

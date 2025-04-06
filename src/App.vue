@@ -1,5 +1,5 @@
 <template lang="pug">
-  #app
+  #app(v-cloak)
     el-container
       el-header
         app-header
@@ -21,6 +21,21 @@ export default {
     AppHeader,
     AppFooter,
     GeoView
+  },
+  data() {
+    return {
+      isLoading: true
+    }
+  },
+  mounted() {
+    // Verificar se todos os recursos críticos foram carregados
+    Promise.all([
+      // Verificações de recursos
+      this.checkStylesLoaded(),
+      this.checkScriptsLoaded()
+    ]).then(() => {
+      this.isLoading = false;
+    });
   }
 }
 </script>
